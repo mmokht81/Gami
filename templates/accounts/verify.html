@@ -1,0 +1,80 @@
+{% extends "accounts/base.html" %}
+{% load static %}
+
+{% block title %}
+تایید کد
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'accounts/css/login.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="container vh-100 d-flex justify-content-center align-items-center">
+
+    <div class="card shadow-lg p-5" style="width:420px">
+
+        <h2 class="text-center mb-4">
+            تایید کد
+        </h2>
+
+        <p class="text-center text-muted">
+            کد ارسال شده را وارد کنید.
+        </p>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} mb-3">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post">
+
+            {% csrf_token %}
+
+            <div class="mb-3">
+                {{ form.code }}
+
+                {% if form.code.errors %}
+                    <div class="text-danger mt-2">
+                        {{ form.code.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <button
+                type="submit"
+                class="btn btn-success btn-lg w-100">
+                تایید
+            </button>
+
+        </form>
+
+        <div class="text-center mt-4">
+
+            <div id="timer" class="fw-bold fs-5">
+                02:00
+            </div>
+
+            <a
+                id="resend-btn"
+                href="{% url 'resend_otp' %}"
+                class="btn btn-outline-primary mt-3"
+                style="display:none;">
+                ارسال مجدد کد
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'accounts/js/verify.js' %}"></script>
+{% endblock %}
