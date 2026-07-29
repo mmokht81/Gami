@@ -1,8 +1,9 @@
 from pathlib import Path
-import os
-from dotenv import load_dotenv
 
-load_dotenv()
+# import os
+# from dotenv import load_dotenv
+
+# load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -97,4 +98,4 @@ LOGIN_URL = "login"
 
 LOGIN_REDIRECT_URL = "dashboard"
 
-SMS_IR_API_KEY = os.getenv("SMS_IR_API_KEY")
+# SMS_IR_API_KEY = os.getenv("SMS_IR_API_KEY")

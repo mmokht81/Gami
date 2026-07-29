@@ -106,32 +106,36 @@ class OTPService:
             "user": user,
         }
 
-    @staticmethod
-    def send_sms(phone_number, code):
-        url = "https://api.sms.ir/v1/send/verify"
+    # @staticmethod
+    # def send_sms(phone_number, code):
+    #     url = "https://api.sms.ir/v1/send/bulk"
 
-        headers = {
-            "X-API-KEY": settings.SMS_IR_API_KEY,
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
+    #     headers = {
+    #         "X-API-KEY": settings.SMS_IR_API_KEY,
+    #         "Content-Type": "application/json",
+    #         "Accept": "application/json",
+    #     }
 
-        data = {
-            "mobile": phone_number,
-            "templateId": 100000,   # بعداً مقدار واقعی Template ID
-            "parameters": [
-                {
-                    "name": "Code",
-                    "value": code
-                }
-            ]
-        }
+    #     payload = {
+    #         "lineNumber": "",
+    #         "messageText": [f"کد ورود شما: {code}"],
+    #         "mobiles": [phone_number],
+    #         "sendDateTime": None,
+    #     }
 
-        response = requests.post(
-            url,
-            json=data,
-            headers=headers,
-            timeout=10,
-        )
+    #     try:
+    #         response = requests.post(
+    #             url,
+    #             json=payload,
+    #             headers=headers,
+    #             timeout=10,
+    #         )
 
-        return response.json()
+    #         print(response.status_code)
+    #         print(response.text)
+
+    #         return response.ok
+
+    #     except Exception as e:
+    #         print(e)
+    #         return False

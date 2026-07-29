@@ -16,10 +16,13 @@ def login_view(request):
 
             otp = OTPService.create_otp(phone_number)
 
-            OTPService.send_sms(
-                phone_number,
-                otp.code,
-            )
+            # OTPService.send_sms(
+            #     phone_number,
+            #     otp.code,
+            # )
+            print("=" * 50)
+            print(f"OTP for {phone_number}: {otp.code}")
+            print("=" * 50)
 
             request.session["phone_number"] = phone_number
 
@@ -127,10 +130,13 @@ def resend_otp_view(request):
 
     otp = OTPService.create_otp(phone_number)
 
-    OTPService.send_sms(
-        phone_number,
-        otp.code,
-    )
+    # OTPService.send_sms(
+    #     phone_number,
+    #     otp.code,
+    # )
+    print("=" * 50)
+    print(f"NEW OTP: {otp.code}")
+    print("=" * 50)
 
     messages.success(
         request,
