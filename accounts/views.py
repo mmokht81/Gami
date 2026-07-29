@@ -1,67 +1,160 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 
-from .forms import PhoneLoginForm, VerifyOTPForm
+from .forms import (
+    PhoneForm,
+    RegisterForm,
+    LoginForm,
+    VerifyOTPForm,
+    ForgotPasswordForm,
+    ResetPasswordForm,
+)
+
+from .models import User
 from .services import OTPService
 
 
-def login_view(request):
+def phone_view(request):
     if request.method == "POST":
-        form = PhoneLoginForm(request.POST)
+        form = PhoneForm(request.POST)
 
         if form.is_valid():
-            phone_number = form.cleaned_data["phone_number"]
+            phone = form.cleaned_data["phone_number"]
 
-            otp = OTPService.create_otp(phone_number)
+            request.session["phone_number"] = phone
 
-            # OTPService.send_sms(
-            #     phone_number,
-            #     otp.code,
-            # )
-            print("=" * 50)
-            print(f"OTP for {phone_number}: {otp.code}")
-            print("=" * 50)
+            if User.objects.filter(phone_number=phone).exists():
+                return redirect("login")
 
-            request.session["phone_number"] = phone_number
-
-            return redirect("verify")
+            return redirect("register")
 
     else:
-        form = PhoneLoginForm()
+        form = PhoneForm()
 
     return render(
         request,
-        "accounts/login.html",
+        "accounts/phone.html",
         {
             "form": form,
         },
     )
 
 
-def verify_view(request):
-    phone_number = request.session.get("phone_number")
+def register_view(request):
+    phone = request.session.get("phone_number")
 
-    if not phone_number:
-        return redirect("login")
+    if not phone:
+        return redirect("phone")
+
+    if request.method == "POST":
+        form = RegisterForm(request.POST)
+
+        if form.is_valid():
+
+            user = User.objects.create_user(
+                phone_number=phone,
+                password=form.cleaned_data["password"],
+            )
+
+            otp = OTPService.create_otp(phone)
+
+            print("=" * 50)
+            print(f"REGISTER OTP : {otp.code}")
+            print("=" * 50)
+
+            return redirect("verify")
+
+    else:
+        form = RegisterForm(
+            initial={
+                "phone_number": phone,
+            }
+        )
+
+    return render(
+        request,
+        "accounts/register.html",
+        {
+            "form": form,
+            "phone_number": phone,
+        },
+    )
+
+
+def login_view(request):
+    phone = request.session.get("phone_number")
+
+    if not phone:
+        return redirect("phone")
+
+    if request.method == "POST":
+        form = LoginForm(request.POST)
+
+        if form.is_valid():
+
+            user = authenticate(
+                request,
+                phone_number=phone,
+                password=form.cleaned_data["password"],
+            )
+
+            if user is None:
+                form.add_error(
+                    "password",
+                    "رمز عبور اشتباه است."
+                )
+
+            elif not user.is_phone_verified:
+                messages.error(
+                    request,
+                    "ابتدا شماره موبایل خود را تایید کنید."
+                )
+
+                return redirect("verify")
+
+            else:
+                login(request, user)
+                request.session.pop("phone_number", None)
+                return redirect("dashboard")
+
+    else:
+        form = LoginForm(
+            initial={
+                "phone_number": phone,
+            }
+        )
+
+    return render(
+        request,
+        "accounts/login.html",
+        {
+            "form": form,
+            "phone_number": phone,
+        },
+    )
+
+def verify_view(request):
+    phone = request.session.get("phone_number")
+
+    if not phone:
+        return redirect("phone")
 
     if request.method == "POST":
         form = VerifyOTPForm(request.POST)
 
         if form.is_valid():
-            code = form.cleaned_data["code"]
-
             result = OTPService.verify_otp(
-                phone_number,
-                code,
+                phone,
+                form.cleaned_data["code"],
             )
 
             if result["success"]:
+                if request.session.get("reset_password"):
+                    return redirect("reset_password")
                 login(request, result["user"])
-
                 request.session.pop("phone_number", None)
-
                 return redirect("dashboard")
 
             error = result["error"]
@@ -69,7 +162,7 @@ def verify_view(request):
             if error == "invalid_code":
                 form.add_error(
                     "code",
-                    f"کد وارد شده اشتباه است. {result['remaining_attempts']} تلاش باقی مانده است."
+                    f"کد اشتباه است. {result['remaining_attempts']} تلاش باقی مانده است."
                 )
 
             elif error == "expired":
@@ -81,14 +174,11 @@ def verify_view(request):
             elif error == "max_attempts":
                 form.add_error(
                     "code",
-                    "۵ بار کد را اشتباه وارد کردید. این کد باطل شد. لطفاً کد جدید دریافت کنید."
+                    "کد باطل شد. دوباره درخواست کد بدهید."
                 )
 
-            else:
-                form.add_error(
-                    "code",
-                    "کد معتبر یافت نشد."
-                )
+            elif error == "user_not_found":
+                return redirect("phone")
 
     else:
         form = VerifyOTPForm()
@@ -98,8 +188,36 @@ def verify_view(request):
         "accounts/verify.html",
         {
             "form": form,
+            "phone_number": phone,
         },
     )
+
+
+def resend_otp_view(request):
+    phone = request.session.get("phone_number")
+
+    if not phone:
+        return redirect("phone")
+
+    if not OTPService.can_request_new_otp(phone):
+        messages.error(
+            request,
+            "لطفا تا پایان اعتبار کد قبلی صبر کنید."
+        )
+        return redirect("verify")
+
+    otp = OTPService.create_otp(phone)
+
+    print("=" * 50)
+    print(f"NEW OTP : {otp.code}")
+    print("=" * 50)
+
+    messages.success(
+        request,
+        "کد جدید ارسال شد."
+    )
+
+    return redirect("verify")
 
 
 @login_required
@@ -112,35 +230,72 @@ def dashboard_view(request):
 
 def logout_view(request):
     logout(request)
-    return redirect("login")
+    return redirect("phone")
 
+def forgot_password_view(request):
 
-def resend_otp_view(request):
-    phone_number = request.session.get("phone_number")
+    if request.method == "POST":
+        form = ForgotPasswordForm(request.POST)
 
-    if not phone_number:
-        return redirect("login")
+        if form.is_valid():
+            phone = form.cleaned_data["phone_number"]
 
-    if not OTPService.can_request_new_otp(phone_number):
-        messages.error(
-            request,
-            "لطفاً تا پایان زمان اعتبار کد فعلی صبر کنید."
-        )
-        return redirect("verify")
+            request.session["phone_number"] = phone
+            request.session["reset_password"] = True
 
-    otp = OTPService.create_otp(phone_number)
+            otp = OTPService.create_otp(phone)
 
-    # OTPService.send_sms(
-    #     phone_number,
-    #     otp.code,
-    # )
-    print("=" * 50)
-    print(f"NEW OTP: {otp.code}")
-    print("=" * 50)
+            print("=" * 50)
+            print(f"RESET OTP : {otp.code}")
+            print("=" * 50)
 
-    messages.success(
+            return redirect("verify")
+
+    else:
+        form = ForgotPasswordForm()
+
+    return render(
         request,
-        "کد جدید ارسال شد."
+        "accounts/forgot_password.html",
+        {
+            "form": form,
+        },
     )
 
-    return redirect("verify")
+def reset_password_view(request):
+
+    phone = request.session.get("phone_number")
+
+    if not phone:
+        return redirect("phone")
+
+    user = User.objects.get(phone_number=phone)
+
+    if request.method == "POST":
+        form = ResetPasswordForm(request.POST)
+
+        if form.is_valid():
+
+            user.set_password(
+                form.cleaned_data["password"]
+            )
+
+            user.save()
+
+            login(request, user)
+
+            request.session.pop("phone_number", None)
+            request.session.pop("reset_password", None)
+
+            return redirect("dashboard")
+
+    else:
+        form = ResetPasswordForm()
+
+    return render(
+        request,
+        "accounts/reset_password.html",
+        {
+            "form": form,
+        },
+    )

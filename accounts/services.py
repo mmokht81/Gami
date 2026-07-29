@@ -97,15 +97,23 @@ class OTPService:
         otp.is_used = True
         otp.save(update_fields=["is_used"])
 
-        user, created = User.objects.get_or_create(
+        user = User.objects.filter(
             phone_number=phone_number
-        )
+        ).first()
+
+        if not user:
+            return {
+                "success": False,
+                "error": "user_not_found",
+            }
+
+        user.is_phone_verified = True
+        user.save(update_fields=["is_phone_verified"])
 
         return {
             "success": True,
             "user": user,
         }
-
     # @staticmethod
     # def send_sms(phone_number, code):
     #     url = "https://api.sms.ir/v1/send/bulk"

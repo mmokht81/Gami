@@ -1,9 +1,7 @@
 {% extends "accounts/base.html" %}
 {% load static %}
 
-{% block title %}
-ورود
-{% endblock %}
+{% block title %}ثبت نام{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'accounts/css/login.css' %}">
@@ -16,7 +14,7 @@
     <div class="card shadow-lg p-5" style="width:420px">
 
         <h2 class="text-center mb-4">
-            ورود
+            ثبت نام
         </h2>
 
         <p class="text-center text-muted">
@@ -39,21 +37,12 @@
                 </div>
             {% endif %}
 
-            <button class="btn btn-primary w-100 btn-lg mt-4">
+            <button class="btn btn-success w-100 btn-lg mt-4">
 
-                ورود
+                ثبت نام
 
             </button>
 
-        </form>
-
-        <div class="text-center mt-3">
-
-        <a href="{% url 'forgot_password' %}">
-            رمز عبور را فراموش کرده‌ام
-        </a>
-
-        </div>
         </form>
 
     </div>
