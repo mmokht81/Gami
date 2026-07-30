@@ -16,6 +16,58 @@
 
 </div>
 
+<h2>داشبورد کاربر</h2>
+
+<div class="card">
+
+    <p><strong>نام:</strong> {{ user.first_name }}</p>
+
+    <p><strong>نام خانوادگی:</strong> {{ user.last_name }}</p>
+
+    <p><strong>شماره موبایل:</strong> {{ user.phone_number }}</p>
+
+    <p><strong>امتیاز:</strong> {{ user.points }}</p>
+
+    <p><strong>سطح:</strong> {{ user.level }}</p>
+
+    <p><strong>نقش:</strong> {{ user.get_role_display }}</p>
+
+    <p><strong>وضعیت:</strong> {{ user.get_status_display }}</p>
+
+</div>
+
+<hr>
+
+<h3>ماموریت</h3>
+
+{% if user.mission %}
+
+    <p>{{ user.mission }}</p>
+
+    {% if user.mission_completed %}
+        <span>✅ انجام شده</span>
+    {% else %}
+        <span>⌛ در حال انجام</span>
+    {% endif %}
+
+{% else %}
+
+    <p>ماموریتی ثبت نشده است.</p>
+
+{% endif %}
+
+<hr>
+
+<h3>موقعیت‌های شغلی</h3>
+
+<ul>
+{% for job in user.job_positions.all %}
+    <li>{{ job.title }}</li>
+{% empty %}
+    <li>موقعیت شغلی ثبت نشده است.</li>
+{% endfor %}
+</ul>
+
 <div class="text-center mt-5">
 
     <a href="{% url 'logout' %}"

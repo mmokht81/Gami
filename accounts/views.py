@@ -158,10 +158,20 @@ def verify_view(request):
             )
 
             if result["success"]:
+
+                # اگر فرآیند بازیابی رمز عبور باشد،
+                # فقط به صفحه تغییر رمز هدایت می‌شود.
                 if request.session.get("reset_password"):
                     return redirect("reset_password")
-                login(request, result["user"])
+
+                login(
+                    request,
+                    result["user"],
+                    backend="accounts.backends.PhoneBackend",
+                )
+
                 request.session.pop("phone_number", None)
+
                 return redirect("dashboard")
 
             error = result["error"]
@@ -276,7 +286,10 @@ def reset_password_view(request):
     if not phone:
         return redirect("phone")
 
-    user = User.objects.get(phone_number=phone)
+    try:
+        user = User.objects.get(phone_number=phone)
+    except User.DoesNotExist:
+        return redirect("phone")
 
     if request.method == "POST":
         form = ResetPasswordForm(request.POST)
@@ -289,7 +302,11 @@ def reset_password_view(request):
 
             user.save()
 
-            login(request, user)
+            login(
+                request,
+                user,
+                backend="accounts.backends.PhoneBackend",
+            )
 
             request.session.pop("phone_number", None)
             request.session.pop("reset_password", None)
