@@ -1,10 +1,13 @@
 from django.db import models
+from .managers import UserManager
+from django.utils import timezone
+from datetime import timedelta
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth.models import (
     AbstractBaseUser,
     PermissionsMixin,
 )
 
-from .managers import UserManager
 
 ROLE_CHOICES = (
     ("USER", "User"),
@@ -14,6 +17,20 @@ ROLE_CHOICES = (
 STATUS_CHOICES = (
     ("جویای کار", "جویای کار"),
     ("استخدام شده", "استخدام شده"),
+)
+APPLICATION_STATUS = (
+    ("PENDING", "Pending"),
+    ("ACCEPTED", "Accepted"),
+    ("REJECTED", "Rejected"),
+)
+QUESTION_TYPES = (
+    ("TEMPLATE", "Template"),
+    ("CUSTOM", "Custom"),
+)
+MISSION_STATUS = (
+    ("PENDING", "Pending"),
+    ("IN_PROGRESS", "In Progress"),
+    ("COMPLETED", "Completed"),
 )
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -52,21 +69,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         default="جویای کار",
     )
 
-    mission = models.CharField(
-        max_length=255,
-        null=True,
-        blank=True,
-    )
-
-    mission_completed = models.BooleanField(
-        default=False,
-    )
-
-    job_positions = models.ManyToManyField(
-        "accounts.JobPosition",
-        blank=True,
-    )
-
     is_phone_verified = models.BooleanField(
         default=False
     )
@@ -83,6 +85,10 @@ class User(AbstractBaseUser, PermissionsMixin):
         auto_now_add=True
     )
 
+    @property
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}".strip()
+
     objects = UserManager()
 
     USERNAME_FIELD = "phone_number"
@@ -91,10 +97,6 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.phone_number
-
-from django.utils import timezone
-from datetime import timedelta
-
 
 class OTP(models.Model):
     phone_number = models.CharField(
@@ -137,5 +139,146 @@ class JobPosition(models.Model):
         unique=True,
     )
 
+    is_active = models.BooleanField(
+        default=True,
+    )
+
+    description = models.TextField()
+
     def __str__(self):
         return self.title
+
+class Mission(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    points = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+class JobApplication(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="applications",
+    )
+
+    job_position = models.ForeignKey(
+        JobPosition,
+        on_delete=models.CASCADE,
+        related_name="applications",
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=APPLICATION_STATUS,
+        default="PENDING",
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    submitted_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        unique_together = ("user", "job_position")
+
+    def __str__(self):
+        return f"{self.user} - {self.job_position}"
+
+class Question(models.Model):
+    job_position = models.ForeignKey(
+        JobPosition,
+        on_delete=models.CASCADE,
+        related_name="questions",
+    )
+
+    type = models.CharField(
+        max_length=20,
+        choices=QUESTION_TYPES,
+    )
+
+    text = models.TextField()
+
+    order = models.PositiveIntegerField(
+        default=1,
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+    )
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self):
+        return self.text[:50]
+
+class UserMission(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="user_missions",
+    )
+
+    mission = models.ForeignKey(
+        Mission,
+        on_delete=models.CASCADE,
+        related_name="user_missions",
+    )
+
+    progress = models.PositiveSmallIntegerField(
+        default=0,
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(100),
+        ],
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=MISSION_STATUS,
+        default="PENDING",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        unique_together = ("user", "mission")
+
+    def __str__(self):
+        return f"{self.user.phone_number} - {self.mission.name}"
+
+class ApplicationAnswer(models.Model):
+    application = models.ForeignKey(
+        JobApplication,
+        on_delete=models.CASCADE,
+        related_name="answers",
+    )
+
+    question = models.ForeignKey(
+        Question,
+        on_delete=models.CASCADE,
+        related_name="answers",
+    )
+
+    answer = models.TextField()
+
+    class Meta:
+        unique_together = ("application", "question")
+
+    def __str__(self):
+        return f"{self.application.user.phone_number} - {self.question.id}"
