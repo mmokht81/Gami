@@ -6,6 +6,15 @@ from django.contrib.auth.models import (
 
 from .managers import UserManager
 
+ROLE_CHOICES = (
+    ("USER", "User"),
+    ("ADMIN", "Admin"),
+    ("SUPERADMIN", "Super Admin"),
+)
+STATUS_CHOICES = (
+    ("جویای کار", "جویای کار"),
+    ("استخدام شده", "استخدام شده"),
+)
 
 class User(AbstractBaseUser, PermissionsMixin):
     phone_number = models.CharField(
@@ -21,6 +30,41 @@ class User(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(
         max_length=100,
         blank=True
+    )
+
+    points = models.PositiveIntegerField(
+        default=10
+    )
+
+    level = models.PositiveIntegerField(
+        default=0
+    )
+
+    role = models.CharField(
+        max_length=10,
+        choices=ROLE_CHOICES,
+        default="USER",
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="جویای کار",
+    )
+
+    mission = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+    )
+
+    mission_completed = models.BooleanField(
+        default=False,
+    )
+
+    job_positions = models.ManyToManyField(
+        "accounts.JobPosition",
+        blank=True,
     )
 
     is_phone_verified = models.BooleanField(
@@ -86,3 +130,12 @@ class OTP(models.Model):
 
     def __str__(self):
         return f"{self.phone_number} - {self.code}"
+
+class JobPosition(models.Model):
+    title = models.CharField(
+        max_length=255,
+        unique=True,
+    )
+
+    def __str__(self):
+        return self.title

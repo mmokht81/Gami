@@ -82,7 +82,6 @@ def register_view(request):
         },
     )
 
-
 def login_view(request):
     phone = request.session.get("phone_number")
 
@@ -93,11 +92,12 @@ def login_view(request):
         form = LoginForm(request.POST)
 
         if form.is_valid():
+            password = form.cleaned_data["password"]
 
             user = authenticate(
                 request,
                 phone_number=phone,
-                password=form.cleaned_data["password"],
+                password=password,
             )
 
             if user is None:
@@ -106,12 +106,19 @@ def login_view(request):
                     "رمز عبور اشتباه است."
                 )
 
+            elif not user.is_active:
+                form.add_error(
+                    None,
+                    "حساب کاربری شما غیرفعال شده است. لطفاً با واحد HR تماس بگیرید."
+                )
+
+                # print(form.errors)
+
             elif not user.is_phone_verified:
                 messages.error(
                     request,
                     "ابتدا شماره موبایل خود را تایید کنید."
                 )
-
                 return redirect("verify")
 
             else:
