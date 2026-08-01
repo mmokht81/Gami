@@ -15,6 +15,8 @@ ALLOWED_HOSTS = []
 
 
 INSTALLED_APPS = [
+    'drf_spectacular',
+    'rest_framework',
     'accounts',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -104,3 +106,26 @@ LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"
 
 # SMS_IR_API_KEY = os.getenv("SMS_IR_API_KEY")
+
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": 
+    "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Gami API",
+    "DESCRIPTION": """
+    API Documentation for Gami Gamification Platform.
+
+    Includes:
+    - Authentication
+    - User Profile
+    - Missions
+    - Leaderboard
+    - Job Positions
+    - Applications
+    - Questions
+    - Answers
+    """,
+    "VERSION": "1.0.0",
+}

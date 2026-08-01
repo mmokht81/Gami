@@ -1,8 +1,8 @@
 import secrets
 
 from .models import OTP, User
-import requests
-from django.conf import settings
+# import requests
+# from django.conf import settings
 
 class OTPService:
     OTP_LENGTH = 6

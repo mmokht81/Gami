@@ -1,6 +1,4 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
-
 from .models import (
     User,
     OTP,
@@ -12,24 +10,19 @@ from .models import (
     ApplicationAnswer,
 )
 
-@admin.register(User)
-class CustomUserAdmin(UserAdmin):
-    model = User
 
+@admin.register(User)
+class UserAdmin(admin.ModelAdmin):
     list_display = (
         "phone_number",
         "first_name",
         "last_name",
-        "is_staff",
-        "is_active",
+        "points",
+        "level",
+        "role",
+        "status",
+        "is_phone_verified",
     )
-
-    list_filter = (
-        "is_staff",
-        "is_active",
-    )
-
-    ordering = ("phone_number",)
 
     search_fields = (
         "phone_number",
@@ -37,46 +30,112 @@ class CustomUserAdmin(UserAdmin):
         "last_name",
     )
 
-    fieldsets = (
-        (None, {
-            "fields": (
-                "phone_number",
-                "password",
-            )
-        }),
-        ("Personal Info", {
-            "fields": (
-                "first_name",
-                "last_name",
-            )
-        }),
-        ("Permissions", {
-            "fields": (
-                "is_active",
-                "is_staff",
-                "is_superuser",
-                "groups",
-                "user_permissions",
-            )
-        }),
-        ("Important Dates", {
-            "fields": (
-                "last_login",
-            )
-        }),
+    list_filter = (
+        "role",
+        "status",
+        "is_phone_verified",
     )
 
-    add_fieldsets = (
-        (None, {
-            "classes": ("wide",),
-            "fields": (
-                "phone_number",
-                "password1",
-                "password2",
-                "is_staff",
-                "is_active",
-            ),
-        }),
+    ordering = (
+        "-date_joined",
+    )
+
+
+@admin.register(Mission)
+class MissionAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "points",
+        "is_active",
+    )
+
+    search_fields = (
+        "name",
+    )
+
+    list_filter = (
+        "is_active",
+    )
+
+
+@admin.register(UserMission)
+class UserMissionAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "mission",
+        "progress",
+        "status",
+    )
+
+    list_filter = (
+        "status",
+    )
+
+    search_fields = (
+        "user__phone_number",
+        "mission__name",
+    )
+
+
+@admin.register(JobPosition)
+class JobPositionAdmin(admin.ModelAdmin):
+    list_display = (
+        "title",
+        "is_active",
+    )
+
+    search_fields = (
+        "title",
+    )
+
+    list_filter = (
+        "is_active",
+    )
+
+
+@admin.register(Question)
+class QuestionAdmin(admin.ModelAdmin):
+    list_display = (
+        "job_position",
+        "type",
+        "order",
+        "is_active",
+    )
+
+    list_filter = (
+        "type",
+        "is_active",
+    )
+
+
+@admin.register(JobApplication)
+class JobApplicationAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "job_position",
+        "status",
+        "submitted_at",
+    )
+
+    list_filter = (
+        "status",
+    )
+
+    search_fields = (
+        "user__phone_number",
+    )
+
+    ordering = (
+        "-submitted_at",
+    )
+
+
+@admin.register(ApplicationAnswer)
+class ApplicationAnswerAdmin(admin.ModelAdmin):
+    list_display = (
+        "application",
+        "question",
+        "answer",
     )
 
 
@@ -93,18 +152,3 @@ class OTPAdmin(admin.ModelAdmin):
     search_fields = (
         "phone_number",
     )
-
-    list_filter = (
-        "is_used",
-    )
-
-    ordering = (
-        "-created_at",
-    )
-
-admin.site.register(Mission)
-admin.site.register(UserMission)
-admin.site.register(JobPosition)
-admin.site.register(Question)
-admin.site.register(JobApplication)
-admin.site.register(ApplicationAnswer)
