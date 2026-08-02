@@ -114,6 +114,7 @@ class OTPService:
             "success": True,
             "user": user,
         }
+    
     # @staticmethod
     # def send_sms(phone_number, code):
     #     url = "https://api.sms.ir/v1/send/bulk"

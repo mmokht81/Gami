@@ -3,7 +3,11 @@ from rest_framework.permissions import IsAuthenticated
 
 from drf_spectacular.utils import extend_schema
 
-from ..models import Question, ApplicationAnswer
+from ..models import (
+    Question,
+    ApplicationAnswer,
+    JobApplication,
+)
 from ..serializers import (
     QuestionSerializer,
     ApplicationAnswerSerializer,
@@ -51,7 +55,6 @@ class JobQuestionListAPIView(generics.ListAPIView):
                 "order"
             )
         )
-
 
 
 class ApplicationAnswerListCreateAPIView(generics.ListCreateAPIView):
@@ -112,12 +115,16 @@ class ApplicationAnswerListCreateAPIView(generics.ListCreateAPIView):
             )
         )
 
-
     def perform_create(self, serializer):
         application_id = self.kwargs.get(
             "application_id"
         )
 
+        application = JobApplication.objects.get(
+            id=application_id,
+            user=self.request.user,
+        )
+
         serializer.save(
-            application_id=application_id
+            application=application
         )

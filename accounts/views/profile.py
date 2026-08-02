@@ -3,8 +3,10 @@ from rest_framework.permissions import IsAuthenticated
 
 from drf_spectacular.utils import extend_schema
 
-from ..serializers import UserSerializer
-
+from ..serializers import (
+    UserSerializer,
+    ProfileUpdateSerializer,
+)
 
 class ProfileAPIView(generics.RetrieveUpdateAPIView):
 
@@ -28,9 +30,20 @@ class ProfileAPIView(generics.RetrieveUpdateAPIView):
         responses=UserSerializer,
     )
     def get(self, request, *args, **kwargs):
+        print("=" * 50)
+        print(request.headers.get("Authorization"))
+        print(request.user)
+        print(request.user.is_authenticated)
+        print("=" * 50)
+
         return super().get(request, *args, **kwargs)
 
+    def get_serializer_class(self):
 
+        if self.request.method in ["PUT", "PATCH"]:
+            return ProfileUpdateSerializer
+
+        return UserSerializer
 
     @extend_schema(
         summary="Update user profile",
@@ -42,7 +55,7 @@ class ProfileAPIView(generics.RetrieveUpdateAPIView):
         - last name
         - status
         """,
-        request=UserSerializer,
+        request=ProfileUpdateSerializer,
         responses=UserSerializer,
     )
     def put(self, request, *args, **kwargs):

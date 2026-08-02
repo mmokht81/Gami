@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import timedelta
 
 # import os
 # from dotenv import load_dotenv
@@ -15,6 +16,7 @@ ALLOWED_HOSTS = []
 
 
 INSTALLED_APPS = [
+    'django_filters',
     'drf_spectacular',
     'rest_framework',
     'accounts',
@@ -108,24 +110,63 @@ LOGIN_REDIRECT_URL = "dashboard"
 # SMS_IR_API_KEY = os.getenv("SMS_IR_API_KEY")
 
 REST_FRAMEWORK = {
-    "DEFAULT_SCHEMA_CLASS": 
-    "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+
+    "DEFAULT_PAGINATION_CLASS": (
+        "rest_framework.pagination.PageNumberPagination"
+    ),
+
+    "PAGE_SIZE": 10,
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": False,
 }
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Gami API",
     "DESCRIPTION": """
-    API Documentation for Gami Gamification Platform.
+API Documentation for Gami Gamification Platform.
 
-    Includes:
-    - Authentication
-    - User Profile
-    - Missions
-    - Leaderboard
-    - Job Positions
-    - Applications
-    - Questions
-    - Answers
-    """,
+Includes:
+- Authentication
+- User Profile
+- Missions
+- Leaderboard
+- Job Positions
+- Applications
+- Questions
+- Answers
+""",
     "VERSION": "1.0.0",
+
+    "SERVE_INCLUDE_SCHEMA": False,
+
+    "SWAGGER_UI_SETTINGS": {
+        "persistAuthorization": True,
+    },
+
+    "COMPONENT_SPLIT_REQUEST": True,
+
+    # "SECURITY": [
+    #     {
+    #         "jwtAuth": [],
+    #     }
+    # ],
+
+    # "COMPONENTS": {
+    #     "securitySchemes": {
+    #         "jwtAuth": {
+    #             "type": "http",
+    #             "scheme": "bearer",
+    #             "bearerFormat": "JWT",
+    #         }
+    #     }
+    # },
 }

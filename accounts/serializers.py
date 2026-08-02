@@ -139,12 +139,21 @@ class JobApplicationSerializer(serializers.ModelSerializer):
 
 class ApplicationAnswerSerializer(serializers.ModelSerializer):
 
+    question = QuestionSerializer(
+        read_only=True
+    )
+
+    question_detail = QuestionSerializer(
+        source="question",
+        read_only=True
+    )
+
     class Meta:
         model = ApplicationAnswer
-
         fields = (
             "id",
             "question",
+            "question_detail",
             "answer",
             "application",
         )
@@ -154,8 +163,44 @@ class ApplicationAnswerSerializer(serializers.ModelSerializer):
             "application",
         )
 
-class RegisterSerializer(serializers.ModelSerializer):
+    def validate(self, attrs):
 
+        question = attrs.get("question")
+        application_id = self.context["view"].kwargs.get(
+            "application_id"
+        )
+
+        try:
+            application = JobApplication.objects.get(
+                id=application_id,
+                user=self.context["request"].user,
+            )
+
+        except JobApplication.DoesNotExist:
+            raise serializers.ValidationError(
+                "درخواست استخدام پیدا نشد."
+            )
+
+        if question.job_position != application.job_position:
+            raise serializers.ValidationError(
+                "این سوال مربوط به این موقعیت شغلی نیست."
+            )
+
+        if ApplicationAnswer.objects.filter(
+            application=application,
+            question=question,
+        ).exists():
+
+            raise serializers.ValidationError(
+                "قبلاً به این سوال پاسخ داده‌اید."
+            )
+
+        return attrs
+
+class PhoneAPISerializer(serializers.Serializer):
+    phone_number = serializers.CharField(max_length=11)
+
+class RegisterAPISerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True,
         min_length=6,
@@ -169,20 +214,26 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
 
     def create(self, validated_data):
-
-        user = User.objects.create_user(
+        return User.objects.create_user(
             phone_number=validated_data["phone_number"],
             password=validated_data["password"],
         )
 
-        return user
-
-class VerifyOTPSerializer(serializers.Serializer):
-    phone_number = serializers.CharField(
-        max_length=11
-    )
+class VerifyOTPAPISerializer(serializers.Serializer):
+    phone_number = serializers.CharField(max_length=11)
 
     code = serializers.CharField(
         max_length=6,
-        min_length=6
+        min_length=6,
+    )
+
+class ForgotPasswordAPISerializer(serializers.Serializer):
+    phone_number = serializers.CharField(max_length=11)
+
+class ResetPasswordAPISerializer(serializers.Serializer):
+    phone_number = serializers.CharField(max_length=11)
+
+    password = serializers.CharField(
+        write_only=True,
+        min_length=6,
     )

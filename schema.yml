@@ -1,0 +1,1160 @@
+openapi: 3.0.3
+info:
+  title: Gami API
+  version: 1.0.0
+  description: |2
+
+    API Documentation for Gami Gamification Platform.
+
+    Includes:
+    - Authentication
+    - User Profile
+    - Missions
+    - Leaderboard
+    - Job Positions
+    - Applications
+    - Questions
+    - Answers
+paths:
+  /api/applications/:
+    get:
+      operationId: applications_list
+      description: "\n        Returns all job applications created by the authenticated
+        user.\n\n        Includes:\n        - Job position\n        - Application
+        status\n        - Submission date\n        - Last update date\n        "
+      summary: Get user's job applications
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - applications
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedJobApplicationList'
+          description: ''
+  /api/applications/{application_id}/answers/:
+    get:
+      operationId: applications_answers_list
+      description: "\n        Returns all answers submitted for a specific\n        job
+        application.\n\n        Only answers belonging to the authenticated\n        user's
+        application are accessible.\n        "
+      summary: Get application answers
+      parameters:
+      - in: path
+        name: application_id
+        schema:
+          type: integer
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - applications
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedApplicationAnswerList'
+          description: ''
+    post:
+      operationId: applications_answers_create
+      description: "\n        Creates an answer for a question in a job application.\n\n
+        \       Required fields:\n        - question\n        - answer\n\n        Application
+        is automatically assigned\n        from URL parameter.\n        "
+      summary: Create application answer
+      parameters:
+      - in: path
+        name: application_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationAnswerRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ApplicationAnswerRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ApplicationAnswerRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationAnswer'
+          description: ''
+  /api/applications/{id}/:
+    get:
+      operationId: applications_retrieve
+      description: "\n        Returns details of a specific job application.\n\n        Only
+        applications belonging to\n        the authenticated user are accessible.\n
+        \       "
+      summary: Get job application detail
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - applications
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobApplication'
+          description: ''
+  /api/applications/create/:
+    post:
+      operationId: applications_create_create
+      description: "\n        Creates a new job application for the authenticated
+        user.\n\n        User is automatically assigned from\n        the authenticated
+        account.\n\n        Required field:\n        - job_position\n        "
+      summary: Create job application
+      tags:
+      - applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobApplicationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/JobApplicationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/JobApplicationRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobApplication'
+          description: ''
+  /api/auth/forgot-password/:
+    post:
+      operationId: auth_forgot_password_create
+      description: "\n    Sends an OTP code for password recovery.\n    "
+      summary: Forgot password
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordAPIRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordAPIRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordAPIRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: OTP sent.
+        '404':
+          description: User not found.
+  /api/auth/phone/:
+    post:
+      operationId: auth_phone_create
+      description: "\n    Checks whether a phone number already exists.\n\n    Possible
+        responses:\n\n    - Existing user → Login\n    - New user → Register\n    "
+      summary: Check phone number
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneAPIRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PhoneAPIRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PhoneAPIRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Phone checked successfully.
+        '400':
+          description: Validation error.
+  /api/auth/register/:
+    post:
+      operationId: auth_register_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterAPIRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegisterAPIRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RegisterAPIRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterAPI'
+          description: ''
+  /api/auth/reset-password/:
+    post:
+      operationId: auth_reset_password_create
+      description: "\n    Changes the user's password.\n    "
+      summary: Reset password
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordAPIRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordAPIRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordAPIRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Password changed.
+  /api/auth/verify/:
+    post:
+      operationId: auth_verify_create
+      description: "\n    Verifies the OTP code.\n\n    If the code is correct:\n\n
+        \   - phone number becomes verified\n    - user is authenticated\n    "
+      summary: Verify OTP
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyOTPAPIRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VerifyOTPAPIRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VerifyOTPAPIRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: OTP verified successfully. JWT tokens returned.
+        '400':
+          description: Invalid or expired OTP.
+  /api/job-positions/:
+    get:
+      operationId: job_positions_list
+      description: |2
+
+        Returns all active job positions.
+
+        Supports:
+        - Search by title
+        - Search by description
+        - Ordering by title
+      summary: Get available job positions
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - job-positions
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedJobPositionList'
+          description: ''
+  /api/job-positions/{job_position_id}/questions/:
+    get:
+      operationId: job_positions_questions_list
+      description: "\n        Returns active questions for a specific job position.\n\n
+        \       Includes:\n        - Question type\n        - Question text\n        -
+        Display order\n        - Active status\n        "
+      summary: Get job position questions
+      parameters:
+      - in: path
+        name: job_position_id
+        schema:
+          type: integer
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - job-positions
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedQuestionList'
+          description: ''
+  /api/job-positions/{id}/:
+    get:
+      operationId: job_positions_retrieve
+      description: |2
+
+        Returns details of a specific active job position.
+      summary: Get job position detail
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - job-positions
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobPosition'
+          description: ''
+  /api/leaderboard/:
+    get:
+      operationId: leaderboard_list
+      description: "\n        Returns active users leaderboard.\n\n        Ranking
+        is based on:\n        - Higher points\n        - Higher level\n        - Earlier
+        registration date\n        "
+      summary: Get leaderboard
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - leaderboard
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLeaderboardList'
+          description: ''
+  /api/missions/:
+    get:
+      operationId: missions_list
+      description: "\n        Returns missions assigned to the authenticated user.\n\n
+        \       Includes:\n        - Mission information\n        - Progress percentage\n
+        \       - Mission status\n        - Creation and update dates\n        "
+      summary: Get user missions
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - missions
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserMissionList'
+          description: ''
+  /api/missions/{id}/:
+    get:
+      operationId: missions_retrieve
+      description: "\n        Returns details of a specific mission\n        assigned
+        to the authenticated user.\n\n        Includes:\n        - Mission name\n
+        \       - Description\n        - Points\n        - Progress\n        - Status\n
+        \       "
+      summary: Get mission detail
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - missions
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMission'
+          description: ''
+  /api/profile/:
+    get:
+      operationId: profile_retrieve
+      description: "\n        Returns authenticated user's profile information.\n\n
+        \       Includes:\n        - phone number\n        - name\n        - points\n
+        \       - level\n        - role\n        - status\n        "
+      summary: Get user profile
+      tags:
+      - profile
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: profile_update
+      description: "\n        Update user profile information.\n\n        Editable
+        fields:\n        - first name\n        - last name\n        - status\n        "
+      summary: Update user profile
+      tags:
+      - profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: profile_partial_update
+      tags:
+      - profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProfileUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProfileUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProfileUpdateRequest'
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileUpdate'
+          description: ''
+  /api/token/:
+    post:
+      operationId: token_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/token/refresh/:
+    post:
+      operationId: token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+components:
+  schemas:
+    ApplicationAnswer:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        question:
+          type: integer
+        answer:
+          type: string
+        application:
+          type: integer
+          readOnly: true
+      required:
+      - answer
+      - application
+      - id
+      - question
+    ApplicationAnswerRequest:
+      type: object
+      properties:
+        question:
+          type: integer
+        answer:
+          type: string
+          minLength: 1
+      required:
+      - answer
+      - question
+    ForgotPasswordAPIRequest:
+      type: object
+      properties:
+        phone_number:
+          type: string
+          minLength: 1
+          maxLength: 11
+      required:
+      - phone_number
+    JobApplication:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        job_position:
+          type: integer
+        status:
+          allOf:
+          - $ref: '#/components/schemas/JobApplicationStatusEnum'
+          readOnly: true
+        submitted_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - id
+      - job_position
+      - status
+      - submitted_at
+      - updated_at
+    JobApplicationRequest:
+      type: object
+      properties:
+        job_position:
+          type: integer
+      required:
+      - job_position
+    JobApplicationStatusEnum:
+      enum:
+      - PENDING
+      - ACCEPTED
+      - REJECTED
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `ACCEPTED` - Accepted
+        * `REJECTED` - Rejected
+    JobPosition:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        is_active:
+          type: boolean
+        description:
+          type: string
+      required:
+      - description
+      - id
+      - title
+    Leaderboard:
+      type: object
+      properties:
+        rank:
+          type: string
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+        points:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        level:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+      required:
+      - full_name
+      - rank
+    Mission:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        points:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        is_active:
+          type: boolean
+      required:
+      - description
+      - id
+      - name
+    PaginatedApplicationAnswerList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationAnswer'
+    PaginatedJobApplicationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobApplication'
+    PaginatedJobPositionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobPosition'
+    PaginatedLeaderboardList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Leaderboard'
+    PaginatedQuestionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Question'
+    PaginatedUserMissionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserMission'
+    PatchedProfileUpdateRequest:
+      type: object
+      properties:
+        first_name:
+          type: string
+          maxLength: 100
+        last_name:
+          type: string
+          maxLength: 100
+    PhoneAPIRequest:
+      type: object
+      properties:
+        phone_number:
+          type: string
+          minLength: 1
+          maxLength: 11
+      required:
+      - phone_number
+    ProfileUpdate:
+      type: object
+      properties:
+        first_name:
+          type: string
+          maxLength: 100
+        last_name:
+          type: string
+          maxLength: 100
+    ProfileUpdateRequest:
+      type: object
+      properties:
+        first_name:
+          type: string
+          maxLength: 100
+        last_name:
+          type: string
+          maxLength: 100
+    Question:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+        text:
+          type: string
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        is_active:
+          type: boolean
+        job_position:
+          type: integer
+      required:
+      - id
+      - job_position
+      - text
+      - type
+    RegisterAPI:
+      type: object
+      properties:
+        phone_number:
+          type: string
+          maxLength: 11
+      required:
+      - phone_number
+    RegisterAPIRequest:
+      type: object
+      properties:
+        phone_number:
+          type: string
+          minLength: 1
+          maxLength: 11
+        password:
+          type: string
+          writeOnly: true
+          minLength: 6
+      required:
+      - password
+      - phone_number
+    ResetPasswordAPIRequest:
+      type: object
+      properties:
+        phone_number:
+          type: string
+          minLength: 1
+          maxLength: 11
+        password:
+          type: string
+          writeOnly: true
+          minLength: 6
+      required:
+      - password
+      - phone_number
+    RoleEnum:
+      enum:
+      - USER
+      - ADMIN
+      - SUPERADMIN
+      type: string
+      description: |-
+        * `USER` - User
+        * `ADMIN` - Admin
+        * `SUPERADMIN` - Super Admin
+    TokenObtainPair:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+    TokenObtainPairRequest:
+      type: object
+      properties:
+        phone_number:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - password
+      - phone_number
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+      required:
+      - access
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - refresh
+    TypeEnum:
+      enum:
+      - TEMPLATE
+      - CUSTOM
+      type: string
+      description: |-
+        * `TEMPLATE` - Template
+        * `CUSTOM` - Custom
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        phone_number:
+          type: string
+          readOnly: true
+        first_name:
+          type: string
+          maxLength: 100
+        last_name:
+          type: string
+          maxLength: 100
+        full_name:
+          type: string
+          readOnly: true
+        points:
+          type: integer
+          readOnly: true
+        level:
+          type: integer
+          readOnly: true
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/UserStatusEnum'
+        is_phone_verified:
+          type: boolean
+          readOnly: true
+      required:
+      - full_name
+      - id
+      - is_phone_verified
+      - level
+      - phone_number
+      - points
+      - role
+    UserMission:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        mission:
+          allOf:
+          - $ref: '#/components/schemas/Mission'
+          readOnly: true
+        progress:
+          type: integer
+          maximum: 100
+          minimum: 0
+        status:
+          $ref: '#/components/schemas/UserMissionStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - mission
+      - updated_at
+    UserMissionStatusEnum:
+      enum:
+      - PENDING
+      - IN_PROGRESS
+      - COMPLETED
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `IN_PROGRESS` - In Progress
+        * `COMPLETED` - Completed
+    UserStatusEnum:
+      enum:
+      - جویای کار
+      - استخدام شده
+      type: string
+      description: |-
+        * `جویای کار` - جویای کار
+        * `استخدام شده` - استخدام شده
+    VerifyOTPAPIRequest:
+      type: object
+      properties:
+        phone_number:
+          type: string
+          minLength: 1
+          maxLength: 11
+        code:
+          type: string
+          minLength: 6
+          maxLength: 6
+      required:
+      - code
+      - phone_number
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

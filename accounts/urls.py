@@ -1,5 +1,10 @@
 from django.urls import path
 
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
+
 from .views.auth import (
     phone_view,
     register_view,
@@ -19,6 +24,7 @@ from .views.auth_api import (
     ResetPasswordAPIView,
 )
 from .views.profile import ProfileAPIView
+from .views.dashboard_api import DashboardAPIView
 from .views.leaderboard import LeaderboardAPIView
 from .views.mission import (
     MissionListAPIView,
@@ -148,4 +154,21 @@ urlpatterns = [
         name="api_reset_password",
     ),
 
+    path(
+        "api/token/",
+        TokenObtainPairView.as_view(),
+        name="token_obtain_pair",
+    ),
+
+    path(
+        "api/token/refresh/",
+        TokenRefreshView.as_view(),
+        name="token_refresh",
+    ),
+
+    path(
+        "api/dashboard/",
+        DashboardAPIView.as_view(),
+        name="dashboard-api",
+    ),
 ]
