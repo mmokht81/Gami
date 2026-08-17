@@ -22,7 +22,6 @@ class JobQuestionListAPIView(generics.ListAPIView):
     serializer_class = QuestionSerializer
     permission_classes = [IsAuthenticated]
 
-
     @extend_schema(
         summary="Get job position questions",
         description="""
@@ -64,7 +63,6 @@ class ApplicationAnswerListCreateAPIView(generics.ListCreateAPIView):
 
     serializer_class = ApplicationAnswerSerializer
     permission_classes = [IsAuthenticated]
-
 
     @extend_schema(
         summary="Get application answers",
