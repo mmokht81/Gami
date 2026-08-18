@@ -64,7 +64,7 @@ class VerifyOTPForm(forms.Form):
         widget=forms.TextInput(
             attrs={
                 "class": "form-control form-control-lg text-center",
-                "placeholder": "123456",
+                "placeholder": "12**56",
                 "autocomplete": "off",
                 "maxlength": "6",
             }
@@ -86,7 +86,7 @@ class ForgotPasswordForm(forms.Form):
         widget=forms.TextInput(
             attrs={
                 "class": "form-control form-control-lg",
-                "placeholder": "09123456789",
+                "placeholder": "09*********",
             }
         ),
     )

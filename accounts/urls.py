@@ -1,10 +1,14 @@
 from django.urls import path
+from .views.profile import ProfileAPIView
+from .views.dashboard_api import DashboardAPIView
+from .views.leaderboard import LeaderboardAPIView
 
 from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
     TokenRefreshView,
 )
-
+from .views.token import (
+    GamiTokenObtainPairView,
+)
 from .views.auth import (
     phone_view,
     register_view,
@@ -23,25 +27,35 @@ from .views.auth_api import (
     ForgotPasswordAPIView,
     ResetPasswordAPIView,
 )
-from .views.profile import ProfileAPIView
-from .views.dashboard_api import DashboardAPIView
-from .views.leaderboard import LeaderboardAPIView
 from .views.mission import (
     MissionListAPIView,
     MissionDetailAPIView,
+    MissionManagementListAPIView,
+    MissionManagementDetailAPIView,
 )
 from .views.job_position import (
     JobPositionListAPIView,
     JobPositionDetailAPIView,
+)
+from .views.question import (
+    JobQuestionListAPIView,
 )
 from .views.job_application import (
     JobApplicationListAPIView,
     JobApplicationCreateAPIView,
     JobApplicationDetailAPIView,
 )
-from .views.application_answer import (
-    JobQuestionListAPIView,
-    ApplicationAnswerListCreateAPIView,
+# from .views.application_answer import (
+#     JobQuestionListAPIView,
+#     ApplicationAnswerListCreateAPIView,
+# )
+from .views.mission_admin import (
+    MissionCreateAPIView,
+    MissionDetailUpdateDeleteAPIView,
+)
+from .views.job_position_admin import (
+    JobPositionCreateAPIView,
+    JobPositionDetailUpdateDeleteAPIView,
 )
 
 urlpatterns = [
@@ -83,6 +97,18 @@ urlpatterns = [
     ),
 
     path(
+        "api/mission-management/",
+        MissionManagementListAPIView.as_view(),
+        name="mission-management-list",
+    ),
+
+    path(
+        "api/mission-management/<int:pk>/",
+        MissionManagementDetailAPIView.as_view(),
+        name="mission-management-detail",
+    ),
+
+    path(
         "api/job-positions/",
         JobPositionListAPIView.as_view(),
         name="api_job_position_list",
@@ -118,11 +144,11 @@ urlpatterns = [
         name="api_job_questions",
     ),
 
-    path(
-        "api/applications/<int:application_id>/answers/",
-        ApplicationAnswerListCreateAPIView.as_view(),
-        name="api_application_answers",
-    ),
+    # path(
+    #     "api/applications/<int:application_id>/answers/",
+    #     ApplicationAnswerListCreateAPIView.as_view(),
+    #     name="api_application_answers",
+    # ),
 
     path(
         "api/auth/phone/",
@@ -156,7 +182,7 @@ urlpatterns = [
 
     path(
         "api/token/",
-        TokenObtainPairView.as_view(),
+        GamiTokenObtainPairView.as_view(),
         name="token_obtain_pair",
     ),
 
@@ -170,5 +196,29 @@ urlpatterns = [
         "api/dashboard/",
         DashboardAPIView.as_view(),
         name="dashboard-api",
+    ),
+
+    path(
+        "api/missions/create/",
+        MissionCreateAPIView.as_view(),
+        name="api_mission_create",
+    ),
+
+    path(
+        "api/missions/<int:pk>/manage/",
+        MissionDetailUpdateDeleteAPIView.as_view(),
+        name="api_mission_manage",
+    ),
+
+    path(
+        "api/job-positions/create/",
+        JobPositionCreateAPIView.as_view(),
+        name="api_job_position_create",
+    ),
+
+    path(
+        "api/job-positions/<int:pk>/manage/",
+        JobPositionDetailUpdateDeleteAPIView.as_view(),
+        name="api_job_position_manage",
     ),
 ]

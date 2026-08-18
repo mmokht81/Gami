@@ -4,40 +4,78 @@ from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
 
 from ..models import JobApplication
-from ..serializers import JobApplicationSerializer
+from ..serializers import (
+    JobApplicationSerializer,
+    JobApplicationAdminSerializer,
+)
 
 
 class JobApplicationListAPIView(generics.ListAPIView):
     """
-    API for retrieving user's job applications.
+    API for retrieving job applications.
+
+    USER:
+    Returns only applications belonging to the authenticated user.
+
+    ADMIN / SUPERADMIN:
+    Returns all job applications.
     """
 
-    serializer_class = JobApplicationSerializer
     permission_classes = [IsAuthenticated]
 
-
     @extend_schema(
-        summary="Get user's job applications",
+        summary="Get job applications",
         description="""
-        Returns all job applications created by the authenticated user.
+        Returns job applications based on user role.
 
-        Includes:
-        - Job position
-        - Application status
-        - Submission date
-        - Last update date
+        USER:
+        - Only own applications.
+
+        ADMIN / SUPERADMIN:
+        - All users' applications.
+        - User information.
+        - Job position information.
+        - Application answers.
+        - Application status.
+        - Submission and update dates.
         """,
-        responses=JobApplicationSerializer(many=True),
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 
+    def get_serializer_class(self):
+
+        if self.request.user.role in (
+            "ADMIN",
+            "SUPERADMIN",
+        ):
+            return JobApplicationAdminSerializer
+
+        return JobApplicationSerializer
 
     def get_queryset(self):
+
+        user = self.request.user
+
+        if user.role in (
+            "ADMIN",
+            "SUPERADMIN",
+        ):
+            return (
+                JobApplication.objects
+                .select_related(
+                    "user",
+                    "job_position",
+                )
+                .order_by(
+                    "-submitted_at"
+                )
+            )
+
         return (
             JobApplication.objects
             .filter(
-                user=self.request.user
+                user=user
             )
             .select_related(
                 "job_position"
@@ -47,8 +85,6 @@ class JobApplicationListAPIView(generics.ListAPIView):
             )
         )
 
-
-
 class JobApplicationCreateAPIView(generics.CreateAPIView):
     """
     API for creating a new job application.
@@ -56,7 +92,6 @@ class JobApplicationCreateAPIView(generics.CreateAPIView):
 
     serializer_class = JobApplicationSerializer
     permission_classes = [IsAuthenticated]
-
 
     @extend_schema(
         summary="Create job application",
@@ -75,38 +110,74 @@ class JobApplicationCreateAPIView(generics.CreateAPIView):
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
 
-
     def perform_create(self, serializer):
         serializer.save(
             user=self.request.user
         )
 
-
-
 class JobApplicationDetailAPIView(generics.RetrieveAPIView):
     """
     API for retrieving a single job application.
+
+    USER:
+    Can only retrieve own applications.
+
+    ADMIN / SUPERADMIN:
+    Can retrieve any application.
     """
 
-    serializer_class = JobApplicationSerializer
     permission_classes = [IsAuthenticated]
-
 
     @extend_schema(
         summary="Get job application detail",
         description="""
         Returns details of a specific job application.
 
-        Only applications belonging to
-        the authenticated user are accessible.
+        USER:
+        - Only own application.
+
+        ADMIN / SUPERADMIN:
+        - Any user's application.
+        - User information.
+        - Job position information.
+        - Application answers.
         """,
-        responses=JobApplicationSerializer,
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 
+    def get_serializer_class(self):
+
+        if self.request.user.role in (
+            "ADMIN",
+            "SUPERADMIN",
+        ):
+            return JobApplicationAdminSerializer
+
+        return JobApplicationSerializer
 
     def get_queryset(self):
-        return JobApplication.objects.filter(
-            user=self.request.user
+
+        user = self.request.user
+
+        if user.role in (
+            "ADMIN",
+            "SUPERADMIN",
+        ):
+            return (
+                JobApplication.objects
+                .select_related(
+                    "user",
+                    "job_position",
+                )
+            )
+
+        return (
+            JobApplication.objects
+            .filter(
+                user=user
+            )
+            .select_related(
+                "job_position"
+            )
         )

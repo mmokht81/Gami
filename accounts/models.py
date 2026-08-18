@@ -14,26 +14,32 @@ ROLE_CHOICES = (
     ("ADMIN", "Admin"),
     ("SUPERADMIN", "Super Admin"),
 )
+
 STATUS_CHOICES = (
     ("جویای کار", "جویای کار"),
     ("استخدام شده", "استخدام شده"),
 )
+
 APPLICATION_STATUS = (
     ("PENDING", "Pending"),
     ("ACCEPTED", "Accepted"),
     ("REJECTED", "Rejected"),
 )
+
 QUESTION_TYPES = (
     ("TEMPLATE", "Template"),
     ("CUSTOM", "Custom"),
 )
+
 MISSION_STATUS = (
     ("PENDING", "Pending"),
     ("IN_PROGRESS", "In Progress"),
     ("COMPLETED", "Completed"),
 )
 
+
 class User(AbstractBaseUser, PermissionsMixin):
+
     phone_number = models.CharField(
         max_length=11,
         unique=True
@@ -98,7 +104,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.phone_number
 
+
 class OTP(models.Model):
+
     phone_number = models.CharField(
         max_length=11,
         db_index=True,
@@ -123,8 +131,10 @@ class OTP(models.Model):
     )
 
     def save(self, *args, **kwargs):
+
         if not self.pk and not self.expires_at:
             self.expires_at = timezone.now() + timedelta(minutes=2)
+
         super().save(*args, **kwargs)
 
     def is_expired(self):
@@ -133,26 +143,44 @@ class OTP(models.Model):
     def __str__(self):
         return f"{self.phone_number} - {self.code}"
 
+
 class JobPosition(models.Model):
+
     title = models.CharField(
         max_length=255,
         unique=True,
+    )
+
+    description = models.TextField()
+
+    tags = models.JSONField(
+        default=list,
+        blank=True,
     )
 
     is_active = models.BooleanField(
         default=True,
     )
 
-    description = models.TextField()
-
     def __str__(self):
         return self.title
 
+
 class Mission(models.Model):
-    name = models.CharField(max_length=255)
+
+    name = models.CharField(
+        max_length=255
+    )
+
     description = models.TextField()
-    points = models.PositiveIntegerField(default=0)
-    is_active = models.BooleanField(default=True)
+
+    points = models.PositiveIntegerField(
+        default=0
+    )
+
+    is_active = models.BooleanField(
+        default=True
+    )
 
     class Meta:
         ordering = ["name"]
@@ -160,7 +188,9 @@ class Mission(models.Model):
     def __str__(self):
         return self.name
 
+
 class JobApplication(models.Model):
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -179,6 +209,11 @@ class JobApplication(models.Model):
         default="PENDING",
     )
 
+    answers = models.JSONField(
+        default=list,
+        blank=True,
+    )
+
     updated_at = models.DateTimeField(
         auto_now=True,
     )
@@ -193,7 +228,9 @@ class JobApplication(models.Model):
     def __str__(self):
         return f"{self.user} - {self.job_position}"
 
+
 class Question(models.Model):
+
     job_position = models.ForeignKey(
         JobPosition,
         on_delete=models.CASCADE,
@@ -221,7 +258,9 @@ class Question(models.Model):
     def __str__(self):
         return self.text[:50]
 
+
 class UserMission(models.Model):
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -261,24 +300,3 @@ class UserMission(models.Model):
 
     def __str__(self):
         return f"{self.user.phone_number} - {self.mission.name}"
-
-class ApplicationAnswer(models.Model):
-    application = models.ForeignKey(
-        JobApplication,
-        on_delete=models.CASCADE,
-        related_name="answers",
-    )
-
-    question = models.ForeignKey(
-        Question,
-        on_delete=models.CASCADE,
-        related_name="answers",
-    )
-
-    answer = models.TextField()
-
-    class Meta:
-        unique_together = ("application", "question")
-
-    def __str__(self):
-        return f"{self.application.user.phone_number} - {self.question.id}"

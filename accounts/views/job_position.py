@@ -7,10 +7,7 @@ from ..models import JobPosition
 from ..serializers import JobPositionSerializer
 
 
-class JobPositionListAPIView(generics.ListAPIView):
-    """
-    API for retrieving available job positions.
-    """
+class JobPositionListAPIView(generics.ListCreateAPIView):
 
     serializer_class = JobPositionSerializer
     permission_classes = [IsAuthenticated]
@@ -23,6 +20,7 @@ class JobPositionListAPIView(generics.ListAPIView):
     search_fields = (
         "title",
         "description",
+        "tags",
     )
 
     ordering_fields = (
@@ -34,14 +32,17 @@ class JobPositionListAPIView(generics.ListAPIView):
     )
 
     @extend_schema(
-        summary="Get available job positions",
+        summary="List and create job positions",
         description="""
 Returns all active job positions.
 
 Supports:
 - Search by title
 - Search by description
+- Search by tags
 - Ordering by title
+
+Also allows creating a new job position.
 """,
         responses=JobPositionSerializer(many=True),
     )
@@ -49,24 +50,28 @@ Supports:
         return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
-        return (
-            JobPosition.objects
-            .filter(is_active=True)
+        return JobPosition.objects.filter(
+            is_active=True
         )
 
 
-class JobPositionDetailAPIView(generics.RetrieveAPIView):
-    """
-    API for retrieving a specific job position.
-    """
+class JobPositionDetailAPIView(
+    generics.RetrieveUpdateDestroyAPIView
+):
 
     serializer_class = JobPositionSerializer
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        summary="Get job position detail",
+        summary="Get, update or delete job position",
         description="""
-Returns details of a specific active job position.
+Returns, updates or deletes a specific job position.
+
+Supported methods:
+- GET
+- PUT
+- PATCH
+- DELETE
 """,
         responses=JobPositionSerializer,
     )
@@ -74,7 +79,6 @@ Returns details of a specific active job position.
         return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
-        return (
-            JobPosition.objects
-            .filter(is_active=True)
+        return JobPosition.objects.filter(
+            is_active=True
         )
