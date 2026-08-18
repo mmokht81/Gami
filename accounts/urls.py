@@ -57,8 +57,16 @@ from .views.job_position_admin import (
     JobPositionCreateAPIView,
     JobPositionDetailUpdateDeleteAPIView,
 )
+from .views.job_application_page import job_application_page
 
 urlpatterns = [
+
+    path(
+        "job-positions/<int:pk>/apply/",
+        job_application_page,
+        name="job_application",
+    ),
+
     # ATHENTICATION PAGES
     path("", phone_view, name="phone"),
     path("register/", register_view, name="register"),

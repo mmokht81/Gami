@@ -236,9 +236,31 @@ def resend_otp_view(request):
 
 @login_required
 def dashboard_view(request):
+
+    from ..models import JobPosition, JobApplication
+
+    job_positions = JobPosition.objects.filter(
+        is_active=True
+    ).order_by("id")
+
+    applications = JobApplication.objects.filter(
+        user=request.user
+    )
+
+    applications_by_job = {
+        application.job_position_id: application
+        for application in applications
+    }
+
+    for job in job_positions:
+        job.user_application = applications_by_job.get(job.id)
+
     return render(
         request,
         "accounts/dashboard.html",
+        {
+            "job_positions": job_positions,
+        },
     )
 
 def logout_view(request):

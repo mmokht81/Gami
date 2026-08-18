@@ -1,0 +1,195 @@
+{% extends "accounts/base.html" %}
+{% load static %}
+
+{% block title %}درخواست استخدام{% endblock %}
+
+{% block extra_css %}
+<link
+    rel="stylesheet"
+    href="{% static 'accounts/css/job_application.css' %}"
+>
+{% endblock %}
+
+
+{% block content %}
+
+<div class="container py-5">
+
+    <div class="row justify-content-center">
+
+        <div class="col-lg-9 col-md-11">
+
+
+            <!-- JOB POSITION -->
+
+            <div class="card shadow-sm border-0 mb-4">
+
+                <div class="card-body p-4">
+
+                    <h2 class="fw-bold mb-2">
+                        {{ job_position.title }}
+                    </h2>
+
+                    <span class="badge bg-primary mb-3">
+                        موقعیت شغلی
+                    </span>
+
+                    <hr>
+
+                    <h5 class="fw-bold mb-3">
+                        درباره موقعیت
+                    </h5>
+
+                    <p class="text-muted">
+                        {{ job_position.description }}
+                    </p>
+
+
+                    {% if job_position.tags %}
+
+                    <div class="mt-4">
+
+                        <h6 class="fw-bold mb-2">
+                            مهارت‌ها
+                        </h6>
+
+                        <div class="d-flex flex-wrap gap-2">
+
+                            {% for tag in job_position.tags %}
+
+                            <span class="badge bg-light text-dark border">
+                                {{ tag }}
+                            </span>
+
+                            {% endfor %}
+
+                        </div>
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+
+
+            <!-- APPLICATION -->
+
+            <div class="card shadow-sm border-0">
+
+                <div class="card-body p-4 p-md-5">
+
+                    <h4 class="fw-bold mb-2">
+                        فرم درخواست استخدام
+                    </h4>
+
+                    <p class="text-muted mb-4">
+                        لطفاً به سؤالات زیر با دقت پاسخ دهید.
+                    </p>
+
+
+                    {% if messages %}
+
+                        {% for message in messages %}
+
+                        <div class="alert alert-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+
+                        {% endfor %}
+
+                    {% endif %}
+
+
+
+                    {% if questions %}
+
+                    <form method="post">
+
+                        {% csrf_token %}
+
+
+                        {% for question in questions %}
+
+                        <div class="question-box mb-4">
+
+                            <label
+                                for="question_{{ question.id }}"
+                                class="form-label fw-bold"
+                            >
+
+                                <span class="question-number">
+                                    {{ forloop.counter }}
+                                </span>
+
+                                {{ question.text }}
+
+                            </label>
+
+
+                            <textarea
+                                id="question_{{ question.id }}"
+                                name="question_{{ question.id }}"
+                                class="form-control"
+                                rows="5"
+                                placeholder="پاسخ خود را وارد کنید..."
+                                required
+                            ></textarea>
+
+                        </div>
+
+                        {% endfor %}
+
+
+
+                        <div class="d-flex justify-content-between mt-5">
+
+                            <a
+                                href="{% url 'dashboard' %}"
+                                class="btn btn-outline-secondary"
+                            >
+                                بازگشت
+                            </a>
+
+
+                            <button
+                                type="submit"
+                                class="btn btn-primary px-5"
+                            >
+                                ارسال درخواست
+                            </button>
+
+                        </div>
+
+                    </form>
+
+
+                    {% else %}
+
+                    <div class="alert alert-info">
+                        برای این موقعیت شغلی هنوز سؤالی ثبت نشده است.
+                    </div>
+
+
+                    <a
+                        href="{% url 'dashboard' %}"
+                        class="btn btn-outline-secondary"
+                    >
+                        بازگشت
+                    </a>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
