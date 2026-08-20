@@ -5,12 +5,12 @@ from drf_spectacular.utils import extend_schema
 
 from ..models import JobPosition
 from ..serializers import JobPositionSerializer
-
+from ..permissions import IsAdminOrSuperAdmin, IsAuthenticatedOrAdminForWrite
 
 class JobPositionListAPIView(generics.ListCreateAPIView):
 
     serializer_class = JobPositionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrAdminForWrite]
 
     filter_backends = (
         filters.SearchFilter,
@@ -60,7 +60,7 @@ class JobPositionDetailAPIView(
 ):
 
     serializer_class = JobPositionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrAdminForWrite]
 
     @extend_schema(
         summary="Get, update or delete job position",

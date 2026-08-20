@@ -4,12 +4,13 @@ from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
 from ..models import JobPosition
 from ..serializers import JobPositionSerializer
+from ..permissions import IsAdminOrSuperAdmin
 
 
 class JobPositionCreateAPIView(generics.CreateAPIView):
 
     serializer_class = JobPositionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminOrSuperAdmin]
 
     @extend_schema(
         summary="Create job position",
@@ -25,7 +26,7 @@ class JobPositionDetailUpdateDeleteAPIView(
 ):
 
     serializer_class = JobPositionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminOrSuperAdmin]
 
     queryset = JobPosition.objects.all()
 
