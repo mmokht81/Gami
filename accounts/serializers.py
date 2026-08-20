@@ -98,6 +98,22 @@ class UserMissionSerializer(serializers.ModelSerializer):
             "updated_at",
         )
 
+class AssignMissionSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField()
+
+    def validate_user_id(self, value):
+        try:
+            user = User.objects.get(
+                id=value,
+                is_active=True,
+            )
+        except User.DoesNotExist:
+            raise serializers.ValidationError(
+                "کاربر مورد نظر پیدا نشد."
+            )
+
+        return user
+
 class JobPositionSerializer(serializers.ModelSerializer):
 
     class Meta:

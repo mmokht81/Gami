@@ -52,6 +52,7 @@ from .views.job_application import (
 from .views.mission_admin import (
     MissionCreateAPIView,
     MissionDetailUpdateDeleteAPIView,
+    MissionAssignAPIView,
 )
 from .views.job_position_admin import (
     JobPositionCreateAPIView,
@@ -114,6 +115,12 @@ urlpatterns = [
         "api/mission-management/<int:pk>/",
         MissionManagementDetailAPIView.as_view(),
         name="mission-management-detail",
+    ),
+
+    path(
+        "api/mission-management/<int:mission_id>/assign/",
+        MissionAssignAPIView.as_view(),
+        name="api_mission_assign",
     ),
 
     path(
