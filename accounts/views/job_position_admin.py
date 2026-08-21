@@ -2,6 +2,7 @@ from django.db.models import Q
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
+
 from ..models import JobPosition
 from ..serializers import JobPositionSerializer
 from ..permissions import IsAdminOrSuperAdmin
@@ -19,7 +20,6 @@ class JobPositionCreateAPIView(generics.CreateAPIView):
     )
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
-
 
 class JobPositionDetailUpdateDeleteAPIView(
     generics.RetrieveUpdateDestroyAPIView

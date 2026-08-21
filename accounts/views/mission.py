@@ -7,7 +7,6 @@ from ..models import (
     UserMission,
     Mission,
 )
-
 from ..serializers import (
     UserMissionSerializer,
     MissionSerializer,
@@ -38,7 +37,6 @@ class MissionListAPIView(generics.ListAPIView):
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 
-
     def get_queryset(self):
         return (
             UserMission.objects
@@ -61,7 +59,6 @@ class MissionDetailAPIView(generics.RetrieveAPIView):
     serializer_class = UserMissionSerializer
     permission_classes = [IsAuthenticated]
 
-
     @extend_schema(
         summary="Get mission detail",
         description="""
@@ -79,7 +76,6 @@ class MissionDetailAPIView(generics.RetrieveAPIView):
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
-
 
     def get_queryset(self):
         return (

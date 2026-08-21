@@ -1,6 +1,5 @@
 from rest_framework.permissions import BasePermission
 
-
 class IsAdminOrSuperAdmin(BasePermission):
     message = "Only ADMIN or SUPERADMIN users can perform this action."
 
@@ -10,7 +9,6 @@ class IsAdminOrSuperAdmin(BasePermission):
             and request.user.is_authenticated
             and request.user.role in ("ADMIN", "SUPERADMIN")
         )
-
 
 class IsAuthenticatedOrAdminForWrite(BasePermission):
     message = "Only ADMIN or SUPERADMIN users can modify job positions."

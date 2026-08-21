@@ -7,7 +7,6 @@ from .models import (
     JobPosition,
     Question,
     JobApplication,
-    # ApplicationAnswer,
 )
 from rest_framework_simplejwt.serializers import (
     TokenObtainPairSerializer
@@ -295,66 +294,6 @@ class JobApplicationAdminSerializer(serializers.ModelSerializer):
 
         read_only_fields = fields
 
-# class ApplicationAnswerSerializer(serializers.ModelSerializer):
-
-#     question = QuestionSerializer(
-#         read_only=True
-#     )
-
-#     question_detail = QuestionSerializer(
-#         source="question",
-#         read_only=True
-#     )
-
-#     class Meta:
-#         model = ApplicationAnswer
-#         fields = (
-#             "id",
-#             "question",
-#             "question_detail",
-#             "answer",
-#             "application",
-#         )
-
-#         read_only_fields = (
-#             "id",
-#             "application",
-#         )
-
-#     def validate(self, attrs):
-
-#         question = attrs.get("question")
-#         application_id = self.context["view"].kwargs.get(
-#             "application_id"
-#         )
-
-#         try:
-#             application = JobApplication.objects.get(
-#                 id=application_id,
-#                 user=self.context["request"].user,
-#             )
-
-#         except JobApplication.DoesNotExist:
-#             raise serializers.ValidationError(
-#                 "درخواست استخدام پیدا نشد."
-#             )
-
-#         if question.job_position != application.job_position:
-#             raise serializers.ValidationError(
-#                 "این سوال مربوط به این موقعیت شغلی نیست."
-#             )
-
-#         if ApplicationAnswer.objects.filter(
-#             application=application,
-#             question=question,
-#         ).exists():
-
-#             raise serializers.ValidationError(
-#                 "قبلاً به این سوال پاسخ داده‌اید."
-#             )
-
-#         return attrs
-
 class PhoneAPISerializer(serializers.Serializer):
     phone_number = serializers.CharField(max_length=11)
 
@@ -411,3 +350,80 @@ class GamiTokenObtainPairSerializer(
             )
 
         return data
+
+class UserAdminSerializer(serializers.ModelSerializer):
+
+    password = serializers.CharField(
+        write_only=True,
+        required=False,
+        min_length=6,
+    )
+
+    points = serializers.IntegerField(
+        required=False,
+        min_value=0,
+        default=10,
+        help_text="User points. Example: 100",
+    )
+
+    level = serializers.IntegerField(
+        required=False,
+        min_value=0,
+        default=0,
+        help_text="User level. Example: 1",
+    )
+
+    class Meta:
+        model = User
+
+        fields = (
+            "id",
+            "phone_number",
+            "password",
+            "first_name",
+            "last_name",
+            "full_name",
+            "points",
+            "level",
+            "role",
+            "status",
+            "is_phone_verified",
+            "is_active",
+        )
+
+        read_only_fields = (
+            "id",
+            "full_name",
+            "is_phone_verified",
+        )
+
+    def create(self, validated_data):
+
+        password = validated_data.pop(
+            "password",
+            None
+        )
+
+        user = User.objects.create_user(
+            password=password,
+            **validated_data
+        )
+
+        return user
+
+    def update(self, instance, validated_data):
+
+        password = validated_data.pop(
+            "password",
+            None
+        )
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if password:
+            instance.set_password(password)
+
+        instance.save()
+
+        return instance

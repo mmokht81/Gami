@@ -7,7 +7,6 @@ from .models import (
     JobPosition,
     Question,
     JobApplication,
-    # ApplicationAnswer,
 )
 
 
@@ -143,11 +142,3 @@ class OTPAdmin(admin.ModelAdmin):
     search_fields = (
         "phone_number",
     )
-
-# @admin.register(ApplicationAnswer)
-# class ApplicationAnswerAdmin(admin.ModelAdmin):
-#     list_display = (
-#         "application",
-#         "question",
-#         "answer",
-#     )

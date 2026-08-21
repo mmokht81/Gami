@@ -3,7 +3,6 @@ from datetime import timedelta
 
 # import os
 # from dotenv import load_dotenv
-
 # load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -153,20 +152,4 @@ Includes:
     },
 
     "COMPONENT_SPLIT_REQUEST": True,
-
-    # "SECURITY": [
-    #     {
-    #         "jwtAuth": [],
-    #     }
-    # ],
-
-    # "COMPONENTS": {
-    #     "securitySchemes": {
-    #         "jwtAuth": {
-    #             "type": "http",
-    #             "scheme": "bearer",
-    #             "bearerFormat": "JWT",
-    #         }
-    #     }
-    # },
 }

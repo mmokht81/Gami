@@ -26,7 +26,6 @@ class MissionCreateAPIView(generics.CreateAPIView):
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
 
-
 class MissionDetailUpdateDeleteAPIView(
     generics.RetrieveUpdateDestroyAPIView
 ):
@@ -65,7 +64,6 @@ class MissionDetailUpdateDeleteAPIView(
     )
     def delete(self, request, *args, **kwargs):
         return super().delete(request, *args, **kwargs)
-
 
 class MissionAssignAPIView(generics.CreateAPIView):
 

@@ -65,7 +65,6 @@ class PhoneAPIView(generics.GenericAPIView):
             status=status.HTTP_200_OK,
         )
 
-
 class RegisterAPIView(generics.CreateAPIView):
     permission_classes = [AllowAny]
     serializer_class = RegisterAPISerializer
@@ -120,7 +119,6 @@ class RegisterAPIView(generics.CreateAPIView):
             },
             status=status.HTTP_201_CREATED,
         )
-
 
 class VerifyOTPAPIView(generics.GenericAPIView):
     permission_classes = [AllowAny]
@@ -182,7 +180,6 @@ class VerifyOTPAPIView(generics.GenericAPIView):
             status=status.HTTP_200_OK,
         )
 
-
 class ForgotPasswordAPIView(generics.GenericAPIView):
     permission_classes = [AllowAny]
     serializer_class = ForgotPasswordAPISerializer
@@ -229,7 +226,6 @@ class ForgotPasswordAPIView(generics.GenericAPIView):
             },
             status=status.HTTP_200_OK,
         )
-
 
 class ResetPasswordAPIView(generics.GenericAPIView):
     permission_classes = [AllowAny]

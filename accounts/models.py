@@ -8,29 +8,24 @@ from django.contrib.auth.models import (
     PermissionsMixin,
 )
 
-
 ROLE_CHOICES = (
     ("USER", "User"),
     ("ADMIN", "Admin"),
     ("SUPERADMIN", "Super Admin"),
 )
-
 STATUS_CHOICES = (
     ("جویای کار", "جویای کار"),
     ("استخدام شده", "استخدام شده"),
 )
-
 APPLICATION_STATUS = (
     ("PENDING", "Pending"),
     ("ACCEPTED", "Accepted"),
     ("REJECTED", "Rejected"),
 )
-
 QUESTION_TYPES = (
     ("TEMPLATE", "Template"),
     ("CUSTOM", "Custom"),
 )
-
 MISSION_STATUS = (
     ("PENDING", "Pending"),
     ("IN_PROGRESS", "In Progress"),
@@ -104,7 +99,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.phone_number
 
-
 class OTP(models.Model):
 
     phone_number = models.CharField(
@@ -143,7 +137,6 @@ class OTP(models.Model):
     def __str__(self):
         return f"{self.phone_number} - {self.code}"
 
-
 class JobPosition(models.Model):
 
     title = models.CharField(
@@ -164,7 +157,6 @@ class JobPosition(models.Model):
 
     def __str__(self):
         return self.title
-
 
 class Mission(models.Model):
 
@@ -187,7 +179,6 @@ class Mission(models.Model):
 
     def __str__(self):
         return self.name
-
 
 class JobApplication(models.Model):
 
@@ -228,7 +219,6 @@ class JobApplication(models.Model):
     def __str__(self):
         return f"{self.user} - {self.job_position}"
 
-
 class Question(models.Model):
 
     job_position = models.ForeignKey(
@@ -257,7 +247,6 @@ class Question(models.Model):
 
     def __str__(self):
         return self.text[:50]
-
 
 class UserMission(models.Model):
 

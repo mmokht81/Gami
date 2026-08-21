@@ -1,8 +1,6 @@
 import secrets
 
 from .models import OTP, User
-# import requests
-# from django.conf import settings
 
 class OTPService:
     OTP_LENGTH = 6
@@ -76,7 +74,6 @@ class OTPService:
         if otp.code != code:
             otp.attempts += 1
 
-            # اگر این تلاش، آخرین تلاش مجاز بود
             if otp.attempts >= OTPService.MAX_ATTEMPTS:
                 otp.is_used = True
                 otp.save(update_fields=["attempts", "is_used"])
@@ -114,37 +111,3 @@ class OTPService:
             "success": True,
             "user": user,
         }
-    
-    # @staticmethod
-    # def send_sms(phone_number, code):
-    #     url = "https://api.sms.ir/v1/send/bulk"
-
-    #     headers = {
-    #         "X-API-KEY": settings.SMS_IR_API_KEY,
-    #         "Content-Type": "application/json",
-    #         "Accept": "application/json",
-    #     }
-
-    #     payload = {
-    #         "lineNumber": "",
-    #         "messageText": [f"کد ورود شما: {code}"],
-    #         "mobiles": [phone_number],
-    #         "sendDateTime": None,
-    #     }
-
-    #     try:
-    #         response = requests.post(
-    #             url,
-    #             json=payload,
-    #             headers=headers,
-    #             timeout=10,
-    #         )
-
-    #         print(response.status_code)
-    #         print(response.text)
-
-    #         return response.ok
-
-    #     except Exception as e:
-    #         print(e)
-    #         return False

@@ -102,7 +102,6 @@ class ForgotPasswordForm(forms.Form):
 
         return phone
 
-
 class ResetPasswordForm(forms.Form):
     password = forms.CharField(
         min_length=6,

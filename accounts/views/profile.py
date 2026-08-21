@@ -61,7 +61,5 @@ class ProfileAPIView(generics.RetrieveUpdateAPIView):
     def put(self, request, *args, **kwargs):
         return super().put(request, *args, **kwargs)
 
-
-
     def get_object(self):
         return self.request.user

@@ -54,7 +54,6 @@ Also allows creating a new job position.
             is_active=True
         )
 
-
 class JobPositionDetailAPIView(
     generics.RetrieveUpdateDestroyAPIView
 ):

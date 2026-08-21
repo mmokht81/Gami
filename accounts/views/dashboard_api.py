@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from ..models import UserMission, JobApplication
 from drf_spectacular.utils import extend_schema
 
+
 class DashboardAPIView(APIView):
 
     permission_classes = [

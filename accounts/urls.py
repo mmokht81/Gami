@@ -45,10 +45,6 @@ from .views.job_application import (
     JobApplicationCreateAPIView,
     JobApplicationDetailAPIView,
 )
-# from .views.application_answer import (
-#     JobQuestionListAPIView,
-#     ApplicationAnswerListCreateAPIView,
-# )
 from .views.mission_admin import (
     MissionCreateAPIView,
     MissionDetailUpdateDeleteAPIView,
@@ -57,6 +53,10 @@ from .views.mission_admin import (
 from .views.job_position_admin import (
     JobPositionCreateAPIView,
     JobPositionDetailUpdateDeleteAPIView,
+)
+from .views.user_admin import (
+    UserAdminListCreateAPIView,
+    UserAdminDetailAPIView,
 )
 from .views.job_application_page import job_application_page
 
@@ -158,13 +158,7 @@ urlpatterns = [
         JobQuestionListAPIView.as_view(),
         name="api_job_questions",
     ),
-
-    # path(
-    #     "api/applications/<int:application_id>/answers/",
-    #     ApplicationAnswerListCreateAPIView.as_view(),
-    #     name="api_application_answers",
-    # ),
-
+    
     path(
         "api/auth/phone/",
         PhoneAPIView.as_view(),
@@ -235,5 +229,17 @@ urlpatterns = [
         "api/job-positions/<int:pk>/manage/",
         JobPositionDetailUpdateDeleteAPIView.as_view(),
         name="api_job_position_manage",
+    ),
+
+    path(
+        "api/user-management/",
+        UserAdminListCreateAPIView.as_view(),
+        name="user-management-list-create",
+    ),
+
+    path(
+        "api/user-management/<int:pk>/",
+        UserAdminDetailAPIView.as_view(),
+        name="user-management-detail",
     ),
 ]
