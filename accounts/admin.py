@@ -8,7 +8,7 @@ from .models import (
     Question,
     JobApplication,
 )
-
+from .models import Badge, UserBadge
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -142,3 +142,33 @@ class OTPAdmin(admin.ModelAdmin):
     search_fields = (
         "phone_number",
     )
+
+
+@admin.register(Badge)
+class BadgeAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "label",
+        "icon",
+        "is_active",
+    )
+    list_filter = ("is_active",)
+    search_fields = (
+        "name",
+        "label",
+    )
+
+
+@admin.register(UserBadge)
+class UserBadgeAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "badge",
+        "assigned_at",
+    )
+    list_filter = ("badge",)
+    search_fields = (
+        "user__phone_number",
+        "badge__name",
+    )
+

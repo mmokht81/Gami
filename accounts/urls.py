@@ -59,6 +59,13 @@ from .views.user_admin import (
     UserAdminDetailAPIView,
 )
 from .views.job_application_page import job_application_page
+from .views.badge import (
+    BadgeListCreateAPIView,
+    BadgeDetailAPIView,
+    AssignBadgeAPIView,
+    MyBadgesAPIView,
+    UserBadgesAPIView,
+)
 
 urlpatterns = [
 
@@ -241,5 +248,35 @@ urlpatterns = [
         "api/user-management/<int:pk>/",
         UserAdminDetailAPIView.as_view(),
         name="user-management-detail",
+    ),
+
+    path(
+        "badges/",
+        BadgeListCreateAPIView.as_view(),
+        name="badge-list-create",
+    ),
+
+    path(
+        "badges/<int:pk>/",
+        BadgeDetailAPIView.as_view(),
+        name="badge-detail",
+    ),
+
+    path(
+        "badges/assign/",
+        AssignBadgeAPIView.as_view(),
+        name="badge-assign",
+    ),
+
+    path(
+        "my-badges/",
+        MyBadgesAPIView.as_view(),
+        name="my-badges",
+    ),
+
+    path(
+        "user-management/<int:user_id>/badges/",
+        UserBadgesAPIView.as_view(),
+        name="user-badges",
     ),
 ]

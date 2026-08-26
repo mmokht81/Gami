@@ -7,6 +7,7 @@ from django.contrib.auth.models import (
     AbstractBaseUser,
     PermissionsMixin,
 )
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 ROLE_CHOICES = (
     ("USER", "User"),
@@ -289,3 +290,40 @@ class UserMission(models.Model):
 
     def __str__(self):
         return f"{self.user.phone_number} - {self.mission.name}"
+
+class Badge(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    label = models.CharField(max_length=100)
+    icon = models.CharField(max_length=10)
+    description = models.TextField()
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.name
+
+class UserBadge(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="badges"
+    )
+    badge = models.ForeignKey(
+        Badge,
+        on_delete=models.CASCADE,
+        related_name="user_badges"
+    )
+    reason = models.TextField()
+    assigned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "badge"],
+                name="unique_user_badge"
+            )
+        ]
+        ordering = ["-assigned_at"]
+
+    def __str__(self):
+        return f"{self.user} - {self.badge}"
+

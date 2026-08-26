@@ -1,6 +1,8 @@
 import secrets
-
 from .models import OTP, User
+from django.db import transaction
+from django.db.models import F
+from .models import Badge, UserBadge, UserMission
 
 class OTPService:
     OTP_LENGTH = 6
@@ -111,3 +113,60 @@ class OTPService:
             "success": True,
             "user": user,
         }
+
+
+class PointService:
+
+    @staticmethod
+    @transaction.atomic
+    def award_points(user, points):
+        if points <= 0:
+            return user
+
+        user.points = F("points") + points
+        user.save(update_fields=["points"])
+        user.refresh_from_db(fields=["points"])
+
+        return user
+
+
+class BadgeService:
+
+    HERO_BADGE_NAME = "hero"
+
+    @staticmethod
+    def assign_badge(user, badge, reason):
+        user_badge, created = UserBadge.objects.get_or_create(
+            user=user,
+            badge=badge,
+            defaults={"reason": reason},
+        )
+
+        return user_badge, created
+
+    @staticmethod
+    def check_automatic_badges(user):
+        completed_missions = UserMission.objects.filter(
+            user=user,
+            status="COMPLETED"
+        ).count()
+
+        if completed_missions >= 5:
+            try:
+                badge = Badge.objects.get(
+                    name=BadgeService.HERO_BADGE_NAME,
+                    is_active=True,
+                )
+            except Badge.DoesNotExist:
+                return None
+
+            user_badge, created = BadgeService.assign_badge(
+                user=user,
+                badge=badge,
+                reason="تکمیل حداقل ۵ ماموریت",
+            )
+
+            return user_badge
+
+        return None
+

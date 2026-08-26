@@ -11,6 +11,7 @@ from .models import (
 from rest_framework_simplejwt.serializers import (
     TokenObtainPairSerializer
 )
+from .models import Badge, UserBadge
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -427,3 +428,51 @@ class UserAdminSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
+
+class BadgeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Badge
+        fields = [
+            "id",
+            "name",
+            "label",
+            "icon",
+            "description",
+            "is_active",
+        ]
+
+class UserBadgeSerializer(serializers.ModelSerializer):
+    badge = BadgeSerializer(read_only=True)
+
+    class Meta:
+        model = UserBadge
+        fields = [
+            "id",
+            "badge",
+            "reason",
+            "assigned_at",
+        ]
+
+class AssignBadgeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserBadge
+        fields = [
+            "user",
+            "badge",
+            "reason",
+        ]
+
+    def validate(self, attrs):
+        user = attrs["user"]
+        badge = attrs["badge"]
+
+        if UserBadge.objects.filter(
+            user=user,
+            badge=badge
+        ).exists():
+            raise serializers.ValidationError(
+                "این نشان قبلاً به این کاربر اختصاص داده شده است."
+            )
+
+        return attrs
+
