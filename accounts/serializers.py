@@ -433,21 +433,33 @@ class UserAdminSerializer(serializers.ModelSerializer):
         return instance
 
 class BadgeRuleSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = BadgeRule
+
         fields = (
             "id",
             "rule_type",
             "value",
             "is_active",
         )
+
         read_only_fields = (
             "id",
         )
 
+    def validate_value(self, value):
+
+        if value <= 0:
+            raise serializers.ValidationError(
+                "value باید بزرگ‌تر از صفر باشد."
+            )
+
+        return value
+
 class BadgeSerializer(serializers.ModelSerializer):
     rule = BadgeRuleSerializer(
-        read_only=True
+        required=False
     )
 
     class Meta:
@@ -465,8 +477,48 @@ class BadgeSerializer(serializers.ModelSerializer):
 
         read_only_fields = (
             "id",
-            "rule",
         )
+
+    def create(self, validated_data):
+        rule_data = validated_data.pop(
+            "rule",
+            None
+        )
+
+        badge = Badge.objects.create(
+            **validated_data
+        )
+
+        if rule_data:
+            BadgeRule.objects.create(
+                badge=badge,
+                **rule_data
+            )
+
+        return badge
+
+    def update(self, instance, validated_data):
+        rule_data = validated_data.pop(
+            "rule",
+            None
+        )
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+
+        if rule_data is not None:
+            rule, created = BadgeRule.objects.get_or_create(
+                badge=instance
+            )
+
+            for attr, value in rule_data.items():
+                setattr(rule, attr, value)
+
+            rule.save()
+
+        return instance
 
 class UserBadgeSerializer(serializers.ModelSerializer):
     badge = BadgeSerializer(

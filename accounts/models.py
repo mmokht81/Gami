@@ -1,14 +1,20 @@
-from django.db import models
-from .managers import UserManager
-from django.utils import timezone
 from datetime import timedelta
-from django.core.validators import MinValueValidator, MaxValueValidator
+
 from django.contrib.auth.models import (
     AbstractBaseUser,
     PermissionsMixin,
 )
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import (
+    MinValueValidator,
+    MaxValueValidator,
+)
+from django.db import models
+from django.utils import timezone
 
+from .managers import UserManager
+
+
+# Choices
 ROLE_CHOICES = (
     ("USER", "User"),
     ("ADMIN", "Admin"),
@@ -39,29 +45,30 @@ MISSION_STATUS = (
 )
 
 
+# User
 class User(AbstractBaseUser, PermissionsMixin):
 
     phone_number = models.CharField(
         max_length=11,
-        unique=True
+        unique=True,
     )
 
     first_name = models.CharField(
         max_length=100,
-        blank=True
+        blank=True,
     )
 
     last_name = models.CharField(
         max_length=100,
-        blank=True
+        blank=True,
     )
 
     points = models.PositiveIntegerField(
-        default=10
+        default=10,
     )
 
     level = models.PositiveIntegerField(
-        default=0
+        default=0,
     )
 
     role = models.CharField(
@@ -77,19 +84,19 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
 
     is_phone_verified = models.BooleanField(
-        default=False
+        default=False,
     )
 
     is_active = models.BooleanField(
-        default=True
+        default=True,
     )
 
     is_staff = models.BooleanField(
-        default=False
+        default=False,
     )
 
     date_joined = models.DateTimeField(
-        auto_now_add=True
+        auto_now_add=True,
     )
 
     @property
@@ -99,12 +106,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     USERNAME_FIELD = "phone_number"
-
     REQUIRED_FIELDS = []
 
     def __str__(self):
         return self.phone_number
 
+
+# OTP
 class OTP(models.Model):
 
     phone_number = models.CharField(
@@ -133,7 +141,9 @@ class OTP(models.Model):
     def save(self, *args, **kwargs):
 
         if not self.pk and not self.expires_at:
-            self.expires_at = timezone.now() + timedelta(minutes=2)
+            self.expires_at = (
+                timezone.now() + timedelta(minutes=2)
+            )
 
         super().save(*args, **kwargs)
 
@@ -143,6 +153,8 @@ class OTP(models.Model):
     def __str__(self):
         return f"{self.phone_number} - {self.code}"
 
+
+# Job Position
 class JobPosition(models.Model):
 
     title = models.CharField(
@@ -164,10 +176,12 @@ class JobPosition(models.Model):
     def __str__(self):
         return self.title
 
+
+# Mission
 class Mission(models.Model):
 
     name = models.CharField(
-        max_length=255
+        max_length=255,
     )
 
     description = models.TextField()
@@ -179,11 +193,11 @@ class Mission(models.Model):
     )
 
     points = models.PositiveIntegerField(
-        default=0
+        default=0,
     )
 
     is_active = models.BooleanField(
-        default=True
+        default=True,
     )
 
     class Meta:
@@ -192,6 +206,8 @@ class Mission(models.Model):
     def __str__(self):
         return self.name
 
+
+# Job Application
 class JobApplication(models.Model):
 
     user = models.ForeignKey(
@@ -231,6 +247,8 @@ class JobApplication(models.Model):
     def __str__(self):
         return f"{self.user} - {self.job_position}"
 
+
+# Question
 class Question(models.Model):
 
     job_position = models.ForeignKey(
@@ -260,6 +278,8 @@ class Question(models.Model):
     def __str__(self):
         return self.text[:50]
 
+
+# User Mission
 class UserMission(models.Model):
 
     user = models.ForeignKey(
@@ -302,35 +322,59 @@ class UserMission(models.Model):
     def __str__(self):
         return f"{self.user.phone_number} - {self.mission.name}"
 
+
+# Badge
 class Badge(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-    label = models.CharField(max_length=100)
-    icon = models.CharField(max_length=10)
+
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+    )
+
+    label = models.CharField(
+        max_length=100,
+    )
+
+    icon = models.CharField(
+        max_length=10,
+    )
+
     description = models.TextField()
-    is_active = models.BooleanField(default=True)
+
+    is_active = models.BooleanField(
+        default=True,
+    )
 
     def __str__(self):
         return self.name
 
+
+# User Badge
 class UserBadge(models.Model):
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name="badges"
+        related_name="badges",
     )
+
     badge = models.ForeignKey(
         Badge,
         on_delete=models.CASCADE,
-        related_name="user_badges"
+        related_name="user_badges",
     )
+
     reason = models.TextField()
-    assigned_at = models.DateTimeField(auto_now_add=True)
+
+    assigned_at = models.DateTimeField(
+        auto_now_add=True,
+    )
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
                 fields=["user", "badge"],
-                name="unique_user_badge"
+                name="unique_user_badge",
             )
         ]
         ordering = ["-assigned_at"]
@@ -338,9 +382,15 @@ class UserBadge(models.Model):
     def __str__(self):
         return f"{self.user} - {self.badge}"
 
+
+# Badge Rule
 class BadgeRule(models.Model):
+
     RULE_TYPE = (
-        ("MISSIONS_COMPLETED", "Missions Completed"),
+        (
+            "MISSIONS_COMPLETED",
+            "Missions Completed",
+        ),
     )
 
     badge = models.OneToOneField(
@@ -365,14 +415,24 @@ class BadgeRule(models.Model):
     def __str__(self):
         return f"{self.badge.name} - {self.rule_type}"
 
+
+# Level
 class Level(models.Model):
-    level = models.PositiveIntegerField(unique=True)
-    required_points = models.PositiveIntegerField(unique=True)
-    is_active = models.BooleanField(default=True)
+
+    level = models.PositiveIntegerField(
+        unique=True,
+    )
+
+    required_points = models.PositiveIntegerField(
+        unique=True,
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+    )
 
     class Meta:
         ordering = ["required_points"]
 
     def __str__(self):
         return f"Level {self.level}"
-

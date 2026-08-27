@@ -11,6 +11,7 @@ from .models import (
     UserMission,
     Badge,
     UserBadge,
+    BadgeRule,
     Level,
 )
 
@@ -18,9 +19,7 @@ from .models import (
 class MissionServiceTests(TestCase):
 
     def setUp(self):
-        # ---------------------------------------------------------
         # Test Levels
-        # ---------------------------------------------------------
         Level.objects.create(
             level=1,
             required_points=0,
@@ -45,9 +44,7 @@ class MissionServiceTests(TestCase):
             is_active=True,
         )
 
-        # ---------------------------------------------------------
         # Test User
-        # ---------------------------------------------------------
         self.user = User.objects.create_user(
             phone_number="09120000001",
             password="testpass123",
@@ -57,9 +54,7 @@ class MissionServiceTests(TestCase):
         # points = 10
         # level = 0
 
-        # ---------------------------------------------------------
         # Test Mission
-        # ---------------------------------------------------------
         self.mission = Mission.objects.create(
             name="Test Mission",
             description="Test mission",
@@ -68,10 +63,7 @@ class MissionServiceTests(TestCase):
             is_active=True,
         )
 
-    # ============================================================
     # UPDATE PROGRESS
-    # ============================================================
-
     def test_update_progress(self):
         user_mission, reward = MissionService.update_progress(
             user=self.user,
@@ -110,10 +102,7 @@ class MissionServiceTests(TestCase):
 
         self.assertIsNone(reward)
 
-    # ============================================================
     # COMPLETE MISSION
-    # ============================================================
-
     def test_complete_mission(self):
         user_mission, reward = MissionService.complete_mission(
             user=self.user,
@@ -140,10 +129,7 @@ class MissionServiceTests(TestCase):
             20,
         )
 
-        # ---------------------------------------------------------
         # Reward
-        # ---------------------------------------------------------
-
         self.assertIsNotNone(reward)
 
         self.assertEqual(
@@ -172,10 +158,7 @@ class MissionServiceTests(TestCase):
             [],
         )
 
-    # ============================================================
     # COMPLETED MISSION CANNOT MOVE BACKWARDS
-    # ============================================================
-
     def test_completed_mission_cannot_move_backwards(self):
         user_mission, reward = MissionService.complete_mission(
             user=self.user,
@@ -213,10 +196,7 @@ class MissionServiceTests(TestCase):
 
         self.assertIsNone(second_reward)
 
-    # ============================================================
     # COMPLETE MISSION TWICE
-    # ============================================================
-
     def test_complete_mission_twice_does_not_award_points_twice(self):
         MissionService.complete_mission(
             user=self.user,
@@ -251,10 +231,7 @@ class MissionServiceTests(TestCase):
             "COMPLETED",
         )
 
-    # ============================================================
     # AUTOMATIC BADGE
-    # ============================================================
-
     def test_completion_returns_new_badge(self):
 
         badge = Badge.objects.create(
@@ -265,12 +242,14 @@ class MissionServiceTests(TestCase):
             is_active=True,
         )
 
-        # ---------------------------------------------------------
-        # Complete first 4 missions
-        # ---------------------------------------------------------
+        BadgeRule.objects.create(
+            badge=badge,
+            rule_type="MISSIONS_COMPLETED",
+            value=5,
+            is_active=True,
+        )
 
         for i in range(4):
-
             mission = Mission.objects.create(
                 name=f"Mission {i}",
                 description="Test",
@@ -283,11 +262,6 @@ class MissionServiceTests(TestCase):
                 user=self.user,
                 mission=mission,
             )
-
-        # ---------------------------------------------------------
-        # Complete 5th mission
-        # This should trigger the automatic badge.
-        # ---------------------------------------------------------
 
         last_mission = Mission.objects.create(
             name="Mission 5",
@@ -310,6 +284,71 @@ class MissionServiceTests(TestCase):
         self.assertEqual(
             reward["badges"][0].badge,
             badge,
+        )
+
+    def test_automatic_badge_rule(self):
+        badge = Badge.objects.create(
+            name="mission_hero_auto",
+            label="پادشاه ماموریت‌ها",
+            description="۵ ماموریت را تکمیل کرده است",
+            icon="👑",
+            is_active=True,
+        )
+
+        BadgeRule.objects.create(
+            badge=badge,
+            rule_type="MISSIONS_COMPLETED",
+            value=5,
+            is_active=True,
+        )
+
+        for i in range(4):
+            mission = Mission.objects.create(
+                name=f"Auto Mission {i}",
+                description="Automatic badge test",
+                type="USER",
+                points=10,
+                is_active=True,
+            )
+
+            MissionService.complete_mission(
+                user=self.user,
+                mission=mission,
+            )
+
+        self.assertFalse(
+            UserBadge.objects.filter(
+                user=self.user,
+                badge=badge,
+            ).exists()
+        )
+
+        mission = Mission.objects.create(
+            name="Auto Mission 5",
+            description="Automatic badge test",
+            type="USER",
+            points=10,
+            is_active=True,
+        )
+
+        MissionService.complete_mission(
+            user=self.user,
+            mission=mission,
+        )
+
+        self.assertTrue(
+            UserBadge.objects.filter(
+                user=self.user,
+                badge=badge,
+            ).exists()
+        )
+
+        self.assertEqual(
+            UserBadge.objects.filter(
+                user=self.user,
+                badge=badge,
+            ).count(),
+            1,
         )
 
 

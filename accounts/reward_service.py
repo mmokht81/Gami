@@ -3,7 +3,14 @@ from dataclasses import dataclass, field
 from django.db import transaction
 from django.db.models import F
 
-from .models import User, Badge, UserBadge, UserMission, Level
+from .models import (
+    User,
+    Badge,
+    UserBadge,
+    UserMission,
+    Level,
+    BadgeRule,
+)
 
 
 @dataclass
@@ -125,12 +132,10 @@ class RewardService:
 
 class BadgeRewardService:
 
-    HERO_BADGE_NAME = "hero"
-
     @staticmethod
     def assign_badge(user, badge, reason):
         """
-        Assign a badge only once.
+        Assign a badge to a user only once.
 
         Returns:
             (UserBadge, created)
@@ -149,9 +154,12 @@ class BadgeRewardService:
     @staticmethod
     def check_automatic_badges(user):
         """
-        Check automatic badge rules.
+        Check active automatic badge rules.
 
-        Returns only badges newly awarded during this operation.
+        Currently supported rule:
+            MISSION_COUNT
+
+        Only newly awarded badges are returned.
         """
 
         newly_awarded = []
@@ -161,21 +169,31 @@ class BadgeRewardService:
             status="COMPLETED",
         ).count()
 
-        if completed_missions >= 5:
+        rules = (
+            BadgeRule.objects
+            .filter(
+                is_active=True,
+                badge__is_active=True,
+            )
+            .select_related("badge")
+        )
 
-            try:
-                badge = Badge.objects.get(
-                    name=BadgeRewardService.HERO_BADGE_NAME,
-                    is_active=True,
-                )
-            except Badge.DoesNotExist:
-                return newly_awarded
+        for rule in rules:
+
+            if rule.rule_type != "MISSIONS_COMPLETED":
+                continue
+
+            if completed_missions < rule.value:
+                continue
 
             user_badge, created = (
                 BadgeRewardService.assign_badge(
                     user=user,
-                    badge=badge,
-                    reason="تکمیل حداقل ۵ ماموریت",
+                    badge=rule.badge,
+                    reason=(
+                        f"تکمیل حداقل "
+                        f"{rule.value} ماموریت"
+                    ),
                 )
             )
 
