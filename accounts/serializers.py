@@ -8,7 +8,8 @@ from .models import (
     Question,
     JobApplication,
     Badge,
-    UserBadge
+    UserBadge,
+    BadgeRule
 )
 from rest_framework_simplejwt.serializers import (
     TokenObtainPairSerializer
@@ -431,7 +432,21 @@ class UserAdminSerializer(serializers.ModelSerializer):
 
         return instance
 
+class BadgeRuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BadgeRule
+        fields = [
+            "id",
+            "rule_type",
+            "value",
+            "is_active",
+        ]
+
 class BadgeSerializer(serializers.ModelSerializer):
+    rule = BadgeRuleSerializer(
+        read_only=True
+    )
+
     class Meta:
         model = Badge
         fields = [
@@ -441,6 +456,7 @@ class BadgeSerializer(serializers.ModelSerializer):
             "icon",
             "description",
             "is_active",
+            "rule",
         ]
 
 class UserBadgeSerializer(serializers.ModelSerializer):

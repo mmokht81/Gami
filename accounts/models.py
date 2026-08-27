@@ -338,3 +338,30 @@ class UserBadge(models.Model):
     def __str__(self):
         return f"{self.user} - {self.badge}"
 
+class BadgeRule(models.Model):
+    RULE_TYPE = (
+        ("MISSIONS_COMPLETED", "Missions Completed"),
+    )
+
+    badge = models.OneToOneField(
+        Badge,
+        on_delete=models.CASCADE,
+        related_name="rule",
+    )
+
+    rule_type = models.CharField(
+        max_length=50,
+        choices=RULE_TYPE,
+    )
+
+    value = models.PositiveIntegerField(
+        default=1,
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+    )
+
+    def __str__(self):
+        return f"{self.badge.name} - {self.rule_type}"
+

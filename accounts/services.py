@@ -2,8 +2,13 @@ import secrets
 from .models import OTP, User
 from django.db import transaction
 from django.db.models import F
-from .models import Badge, UserBadge, UserMission
-
+from .models import (
+    User,
+    # Mission,
+    UserMission,
+    Badge,
+    UserBadge,
+)
 class OTPService:
     OTP_LENGTH = 6
     MAX_ATTEMPTS = 5
@@ -114,7 +119,6 @@ class OTPService:
             "user": user,
         }
 
-
 class PointService:
 
     @staticmethod
@@ -129,44 +133,34 @@ class PointService:
 
         return user
 
-
 class BadgeService:
-
-    HERO_BADGE_NAME = "hero"
-
-    @staticmethod
-    def assign_badge(user, badge, reason):
-        user_badge, created = UserBadge.objects.get_or_create(
-            user=user,
-            badge=badge,
-            defaults={"reason": reason},
-        )
-
-        return user_badge, created
 
     @staticmethod
     def check_automatic_badges(user):
-        completed_missions = UserMission.objects.filter(
-            user=user,
-            status="COMPLETED"
-        ).count()
+        """
+        Check all active badge rules and award
+        badges whose conditions are satisfied.
+        """
 
-        if completed_missions >= 5:
-            try:
-                badge = Badge.objects.get(
-                    name=BadgeService.HERO_BADGE_NAME,
-                    is_active=True,
-                )
-            except Badge.DoesNotExist:
-                return None
+        badges = Badge.objects.filter(
+            is_active=True,
+            rule__is_active=True,
+        ).select_related("rule")
 
-            user_badge, created = BadgeService.assign_badge(
-                user=user,
-                badge=badge,
-                reason="تکمیل حداقل ۵ ماموریت",
-            )
+        for badge in badges:
 
-            return user_badge
+            rule = badge.rule
 
-        return None
+            if rule.rule_type == "MISSIONS_COMPLETED":
 
+                completed_missions = UserMission.objects.filter(
+                    user=user,
+                    status="COMPLETED",
+                ).count()
+
+                if completed_missions >= rule.value:
+
+                    UserBadge.objects.get_or_create(
+                        user=user,
+                        badge=badge,
+                    )

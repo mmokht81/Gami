@@ -9,6 +9,7 @@ from drf_spectacular.utils import extend_schema
 from ..models import Mission
 from ..mission_service import MissionService
 from ..serializers import UserMissionSerializer
+from ..reward_service import RewardResponseBuilder
 
 
 class MissionStartAPIView(generics.GenericAPIView):
@@ -146,9 +147,45 @@ class MissionCompleteAPIView(generics.GenericAPIView):
         summary="Complete mission",
         description=(
             "Complete a mission for the authenticated user. "
-            "Points are awarded automatically."
+            "Points are awarded automatically. "
+            "The response also contains newly earned rewards."
         ),
-        responses=UserMissionSerializer,
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "ok": {
+                        "type": "boolean",
+                    },
+                    "progress": {
+                        "type": "integer",
+                    },
+                    "points": {
+                        "type": "integer",
+                    },
+                    "rewards": {
+                        "type": "object",
+                        "properties": {
+                            "level_up": {
+                                "type": "object",
+                                "nullable": True,
+                                "properties": {
+                                    "from": {
+                                        "type": "integer",
+                                    },
+                                    "to": {
+                                        "type": "integer",
+                                    },
+                                },
+                            },
+                            "badges": {
+                                "type": "array",
+                            },
+                        },
+                    },
+                },
+            },
+        },
     )
     def post(self, request, mission_id):
 
@@ -157,7 +194,9 @@ class MissionCompleteAPIView(generics.GenericAPIView):
                 id=mission_id,
                 is_active=True,
             )
+
         except Mission.DoesNotExist:
+
             return Response(
                 {
                     "detail": "ماموریت مورد نظر پیدا نشد."
@@ -166,11 +205,16 @@ class MissionCompleteAPIView(generics.GenericAPIView):
             )
 
         try:
-            user_mission = MissionService.complete_mission(
-                user=request.user,
-                mission=mission,
+
+            user_mission, reward = (
+                MissionService.complete_mission(
+                    user=request.user,
+                    mission=mission,
+                )
             )
+
         except ValidationError as exc:
+
             return Response(
                 {
                     "detail": str(exc)
@@ -178,7 +222,40 @@ class MissionCompleteAPIView(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # -----------------------------------------
+        # If mission was already completed
+        # -----------------------------------------
+
+        if reward is None:
+
+            return Response(
+                {
+                    "ok": True,
+                    "progress": user_mission.progress,
+                    "points": request.user.points,
+                    "rewards": {
+                        "level_up": None,
+                        "badges": [],
+                    },
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # -----------------------------------------
+        # Build reward response
+        # -----------------------------------------
+
+        reward_response = RewardResponseBuilder.build(
+            user=request.user,
+            level_up=reward["level_up"],
+            badges=reward["badges"],
+        )
+
         return Response(
-            UserMissionSerializer(user_mission).data,
+            {
+                "ok": True,
+                "progress": user_mission.progress,
+                **reward_response,
+            },
             status=status.HTTP_200_OK,
         )

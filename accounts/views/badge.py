@@ -32,7 +32,6 @@ class BadgeListCreateAPIView(generics.ListCreateAPIView):
             is_active=True
         ).order_by("id")
 
-
 class BadgeDetailAPIView(
     generics.RetrieveUpdateDestroyAPIView
 ):
@@ -53,7 +52,6 @@ class BadgeDetailAPIView(
 
         return [IsAdminOrSuperAdmin()]
 
-
 class MyBadgesAPIView(generics.ListAPIView):
     """
     Return badges belonging to authenticated user.
@@ -68,7 +66,6 @@ class MyBadgesAPIView(generics.ListAPIView):
         ).select_related(
             "badge"
         ).order_by("-created_at")
-
 
 class UserBadgesAPIView(generics.ListAPIView):
     """
@@ -87,7 +84,6 @@ class UserBadgesAPIView(generics.ListAPIView):
         ).select_related(
             "badge"
         ).order_by("-created_at")
-
 
 class AssignBadgeAPIView(generics.GenericAPIView):
     """
@@ -128,3 +124,4 @@ class AssignBadgeAPIView(generics.GenericAPIView):
                 else status.HTTP_200_OK
             ),
         )
+

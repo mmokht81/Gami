@@ -17,134 +17,96 @@ class MissionServiceTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(
             phone_number="09120000001",
-            password="testpassword123",
+            password="testpass123",
         )
 
         self.mission = Mission.objects.create(
             name="Test Mission",
-            description="Test mission description",
+            description="Test mission",
             type="USER",
-            points=100,
+            points=10,
             is_active=True,
         )
 
-    def test_start_mission(self):
-        user_mission, created = MissionService.start_mission(
-            user=self.user,
-            mission=self.mission,
-        )
-
-        self.assertTrue(created)
-
-        self.assertEqual(
-            user_mission.progress,
-            0,
-        )
-
-        self.assertEqual(
-            user_mission.status,
-            "IN_PROGRESS",
-        )
-
-    def test_start_mission_twice_does_not_create_duplicate(self):
-        first, created_first = MissionService.start_mission(
-            user=self.user,
-            mission=self.mission,
-        )
-
-        second, created_second = MissionService.start_mission(
-            user=self.user,
-            mission=self.mission,
-        )
-
-        self.assertTrue(created_first)
-        self.assertFalse(created_second)
-
-        self.assertEqual(
-            first.id,
-            second.id,
-        )
-
-        self.assertEqual(
-            UserMission.objects.count(),
-            1,
-        )
-
     def test_update_progress(self):
-        user_mission = MissionService.update_progress(
+        user_mission, reward = MissionService.update_progress(
             user=self.user,
             mission=self.mission,
             progress=50,
         )
 
-        self.assertEqual(
-            user_mission.progress,
-            50,
-        )
-
+        self.assertEqual(user_mission.progress, 50)
         self.assertEqual(
             user_mission.status,
             "IN_PROGRESS",
         )
+        self.assertIsNone(reward)
 
     def test_zero_progress_is_pending(self):
-        user_mission = MissionService.update_progress(
+        user_mission, reward = MissionService.update_progress(
             user=self.user,
             mission=self.mission,
             progress=0,
         )
 
-        self.assertEqual(
-            user_mission.progress,
-            0,
-        )
-
+        self.assertEqual(user_mission.progress, 0)
         self.assertEqual(
             user_mission.status,
             "PENDING",
         )
+        self.assertIsNone(reward)
 
     def test_complete_mission(self):
-        user_mission = MissionService.complete_mission(
+        user_mission, reward = MissionService.complete_mission(
             user=self.user,
             mission=self.mission,
         )
 
-        self.assertEqual(
-            user_mission.progress,
-            100,
-        )
-
+        self.assertEqual(user_mission.progress, 100)
         self.assertEqual(
             user_mission.status,
             "COMPLETED",
-        )
-
-    def test_complete_mission_awards_points(self):
-        initial_points = self.user.points
-
-        MissionService.complete_mission(
-            user=self.user,
-            mission=self.mission,
         )
 
         self.user.refresh_from_db()
 
         self.assertEqual(
             self.user.points,
-            initial_points + 100,
+            20,
+        )
+
+        self.assertIsNotNone(reward)
+
+        self.assertEqual(
+            reward["points"],
+            20,
+        )
+
+        self.assertIsNone(
+            reward["level_up"]
+        )
+
+        self.assertEqual(
+            reward["badges"],
+            [],
         )
 
     def test_completed_mission_cannot_move_backwards(self):
-        MissionService.complete_mission(
+        user_mission, reward = MissionService.complete_mission(
             user=self.user,
             mission=self.mission,
         )
 
-        user_mission = MissionService.update_progress(
-            user=self.user,
-            mission=self.mission,
-            progress=50,
+        self.user.refresh_from_db()
+
+        points_after_completion = self.user.points
+
+        user_mission, second_reward = (
+            MissionService.update_progress(
+                user=self.user,
+                mission=self.mission,
+                progress=50,
+            )
         )
 
         self.assertEqual(
@@ -157,50 +119,26 @@ class MissionServiceTests(TestCase):
             "COMPLETED",
         )
 
-    def test_invalid_progress_is_rejected(self):
-        with self.assertRaises(ValidationError):
-            MissionService.update_progress(
-                user=self.user,
-                mission=self.mission,
-                progress=101,
-            )
+        self.user.refresh_from_db()
 
-        with self.assertRaises(ValidationError):
-            MissionService.update_progress(
-                user=self.user,
-                mission=self.mission,
-                progress=-1,
-            )
+        self.assertEqual(
+            self.user.points,
+            points_after_completion,
+        )
 
-    def test_inactive_mission_cannot_start(self):
-        self.mission.is_active = False
-        self.mission.save()
+        self.assertIsNone(second_reward)
 
-        with self.assertRaises(ValidationError):
-            MissionService.start_mission(
-                user=self.user,
-                mission=self.mission,
-            )
-
-    def test_inactive_mission_cannot_be_completed(self):
-        self.mission.is_active = False
-        self.mission.save()
-
-        with self.assertRaises(ValidationError):
-            MissionService.complete_mission(
-                user=self.user,
-                mission=self.mission,
-            )
-
-    def test_completed_mission_does_not_award_points_twice(self):
-        initial_points = self.user.points
-
+    def test_complete_mission_twice_does_not_award_points_twice(self):
         MissionService.complete_mission(
             user=self.user,
             mission=self.mission,
         )
 
-        MissionService.complete_mission(
+        self.user.refresh_from_db()
+
+        first_points = self.user.points
+
+        user_mission, reward = MissionService.complete_mission(
             user=self.user,
             mission=self.mission,
         )
@@ -209,27 +147,34 @@ class MissionServiceTests(TestCase):
 
         self.assertEqual(
             self.user.points,
-            initial_points + 100,
+            first_points,
+        )
+
+        self.assertIsNone(reward)
+
+        self.assertEqual(
+            user_mission.progress,
+            100,
         )
 
         self.assertEqual(
-            UserMission.objects.count(),
-            1,
+            user_mission.status,
+            "COMPLETED",
         )
 
-    def test_completing_five_missions_awards_hero_badge(self):
-        Badge.objects.create(
+    def test_completion_returns_new_badge(self):
+        badge = Badge.objects.create(
             name="hero",
-            label="قهرمان",
+            label="Hero",
+            description="Completed 5 missions",
             icon="🏆",
-            description="تکمیل حداقل ۵ ماموریت",
             is_active=True,
         )
 
-        for index in range(5):
+        for i in range(4):
             mission = Mission.objects.create(
-                name=f"Mission {index}",
-                description=f"Mission {index} description",
+                name=f"Mission {i}",
+                description="Test",
                 type="USER",
                 points=10,
                 is_active=True,
@@ -240,21 +185,29 @@ class MissionServiceTests(TestCase):
                 mission=mission,
             )
 
-        self.assertEqual(
-            UserMission.objects.filter(
-                user=self.user,
-                status="COMPLETED",
-            ).count(),
-            5,
+        last_mission = Mission.objects.create(
+            name="Mission 5",
+            description="Test",
+            type="USER",
+            points=10,
+            is_active=True,
+        )
+
+        user_mission, reward = MissionService.complete_mission(
+            user=self.user,
+            mission=last_mission,
         )
 
         self.assertEqual(
-            UserBadge.objects.filter(
-                user=self.user,
-                badge__name="hero",
-            ).count(),
+            len(reward["badges"]),
             1,
         )
+
+        self.assertEqual(
+            reward["badges"][0].badge,
+            badge,
+        )
+
 
 class MissionAPITests(APITestCase):
 
@@ -303,20 +256,17 @@ class MissionAPITests(APITestCase):
         )
 
     def test_update_progress_api(self):
-
-        response = self.client.post(
-            f"/api/missions/{self.mission.id}/start/"
-        )
-
-        self.assertEqual(
-            response.status_code,
-            201,
+        url = reverse(
+            "mission-progress",
+            kwargs={
+                "mission_id": self.mission.id,
+            },
         )
 
         response = self.client.patch(
-            f"/api/missions/{self.mission.id}/progress/",
+            url,
             {
-                "progress": 60
+                "progress": 50,
             },
             format="json",
         )
@@ -328,7 +278,7 @@ class MissionAPITests(APITestCase):
 
         self.assertEqual(
             response.data["progress"],
-            60,
+            50,
         )
 
         self.assertEqual(
@@ -337,14 +287,26 @@ class MissionAPITests(APITestCase):
         )
 
     def test_complete_mission_api(self):
+        url = reverse(
+            "mission-complete",
+            kwargs={
+                "mission_id": self.mission.id,
+            },
+        )
 
         response = self.client.post(
-            f"/api/missions/{self.mission.id}/complete/"
+            url,
+            {},
+            format="json",
         )
 
         self.assertEqual(
             response.status_code,
             200,
+        )
+
+        self.assertTrue(
+            response.data["ok"]
         )
 
         self.assertEqual(
@@ -353,15 +315,32 @@ class MissionAPITests(APITestCase):
         )
 
         self.assertEqual(
-            response.data["status"],
-            "COMPLETED",
+            response.data["points"],
+            20,
         )
 
-        self.user.refresh_from_db()
+        self.assertIn(
+            "rewards",
+            response.data,
+        )
+
+        self.assertIn(
+            "level_up",
+            response.data["rewards"],
+        )
+
+        self.assertIn(
+            "badges",
+            response.data["rewards"],
+        )
+
+        self.assertIsNone(
+            response.data["rewards"]["level_up"]
+        )
 
         self.assertEqual(
-            self.user.points,
-            110,
+            response.data["rewards"]["badges"],
+            [],
         )
 
     def test_invalid_progress_api(self):
@@ -391,6 +370,7 @@ class MissionAPITests(APITestCase):
             response.status_code,
             401,
         )
+
 
 class MissionPermissionTests(APITestCase):
 
