@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from django.db import transaction
 from django.db.models import F
 
-from .models import User, Badge, UserBadge, UserMission
+from .models import User, Badge, UserBadge, UserMission, Level
 
 
 @dataclass
@@ -21,26 +21,39 @@ class RewardResult:
 
 class LevelService:
     """
-    Central place for level calculation.
+    Central service for dynamic level calculation.
 
-    IMPORTANT:
-    The exact level calculation formula has not been provided yet.
-    Until the official formula is received, the user's current level
-    is preserved.
+    Level thresholds are stored in the database and can be
+    configured by the admin.
 
-    Once the level specification is received, only this service
-    needs to be updated.
+    Current default configuration:
+        Level 1 -> 0 points
+        Level 2 -> 100 points
+        Level 3 -> 200 points
+        ...
     """
 
     @staticmethod
-    def calculate_level(points, current_level):
+    def calculate_level(points, current_level=None):
         """
-        Return the user's level based on points.
+        Calculate the highest active level the user has reached
+        based on the configured required_points values.
+        """
 
-        Currently preserves the existing level because the official
-        level thresholds/formula have not been specified yet.
-        """
-        return current_level
+        level = (
+            Level.objects
+            .filter(
+                is_active=True,
+                required_points__lte=points,
+            )
+            .order_by("-required_points")
+            .first()
+        )
+
+        if level is None:
+            return current_level or 1
+
+        return level.level
 
     @staticmethod
     def update_level(user):

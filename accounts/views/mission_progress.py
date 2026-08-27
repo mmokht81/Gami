@@ -119,7 +119,7 @@ class MissionProgressAPIView(generics.GenericAPIView):
             )
 
         try:
-            user_mission = MissionService.update_progress(
+            user_mission, reward = MissionService.update_progress(
                 user=request.user,
                 mission=mission,
                 progress=progress,

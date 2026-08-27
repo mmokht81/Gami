@@ -435,12 +435,15 @@ class UserAdminSerializer(serializers.ModelSerializer):
 class BadgeRuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = BadgeRule
-        fields = [
+        fields = (
             "id",
             "rule_type",
             "value",
             "is_active",
-        ]
+        )
+        read_only_fields = (
+            "id",
+        )
 
 class BadgeSerializer(serializers.ModelSerializer):
     rule = BadgeRuleSerializer(
@@ -449,7 +452,8 @@ class BadgeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Badge
-        fields = [
+
+        fields = (
             "id",
             "name",
             "label",
@@ -457,39 +461,38 @@ class BadgeSerializer(serializers.ModelSerializer):
             "description",
             "is_active",
             "rule",
-        ]
+        )
+
+        read_only_fields = (
+            "id",
+            "rule",
+        )
 
 class UserBadgeSerializer(serializers.ModelSerializer):
-    badge = BadgeSerializer(read_only=True)
+    badge = BadgeSerializer(
+        read_only=True
+    )
 
     class Meta:
         model = UserBadge
-        fields = [
+
+        fields = (
             "id",
             "badge",
-            # "created_at",
-        ]
+            "reason",
+            "assigned_at",
+        )
 
-class AssignBadgeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserBadge
-        fields = [
-            "user",
+        read_only_fields = (
+            "id",
             "badge",
             "reason",
-        ]
+            "assigned_at",
+        )
 
-    def validate(self, attrs):
-        user = attrs["user"]
-        badge = attrs["badge"]
-
-        if UserBadge.objects.filter(
-            user=user,
-            badge=badge
-        ).exists():
-            raise serializers.ValidationError(
-                "این نشان قبلاً به این کاربر اختصاص داده شده است."
-            )
-
-        return attrs
-
+class AssignBadgeSerializer(serializers.Serializer):
+    reason = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="Assigned manually by admin",
+    )

@@ -8,7 +8,7 @@ from .models import (
     Question,
     JobApplication,
 )
-from .models import Badge, UserBadge
+from .models import Badge, UserBadge, Level
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -171,4 +171,22 @@ class UserBadgeAdmin(admin.ModelAdmin):
         "user__phone_number",
         "badge__name",
     )
+
+
+@admin.register(Level)
+class LevelAdmin(admin.ModelAdmin):
+    list_display = (
+        "level",
+        "required_points",
+        "is_active",
+    )
+
+    list_filter = (
+        "is_active",
+    )
+
+    ordering = (
+        "level",
+    )
+
 

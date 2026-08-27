@@ -1,25 +1,65 @@
-from django.core.exceptions import ValidationError
 from django.test import TestCase
-from .mission_service import MissionService
+from django.urls import reverse
+
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.urls import reverse
+
+from .mission_service import MissionService
 from .models import (
     User,
     Mission,
     UserMission,
     Badge,
     UserBadge,
+    Level,
 )
+
 
 class MissionServiceTests(TestCase):
 
     def setUp(self):
+        # ---------------------------------------------------------
+        # Test Levels
+        # ---------------------------------------------------------
+        Level.objects.create(
+            level=1,
+            required_points=0,
+            is_active=True,
+        )
+
+        Level.objects.create(
+            level=2,
+            required_points=100,
+            is_active=True,
+        )
+
+        Level.objects.create(
+            level=3,
+            required_points=200,
+            is_active=True,
+        )
+
+        Level.objects.create(
+            level=4,
+            required_points=300,
+            is_active=True,
+        )
+
+        # ---------------------------------------------------------
+        # Test User
+        # ---------------------------------------------------------
         self.user = User.objects.create_user(
             phone_number="09120000001",
             password="testpass123",
         )
 
+        # User model currently starts at:
+        # points = 10
+        # level = 0
+
+        # ---------------------------------------------------------
+        # Test Mission
+        # ---------------------------------------------------------
         self.mission = Mission.objects.create(
             name="Test Mission",
             description="Test mission",
@@ -28,6 +68,10 @@ class MissionServiceTests(TestCase):
             is_active=True,
         )
 
+    # ============================================================
+    # UPDATE PROGRESS
+    # ============================================================
+
     def test_update_progress(self):
         user_mission, reward = MissionService.update_progress(
             user=self.user,
@@ -35,11 +79,16 @@ class MissionServiceTests(TestCase):
             progress=50,
         )
 
-        self.assertEqual(user_mission.progress, 50)
+        self.assertEqual(
+            user_mission.progress,
+            50,
+        )
+
         self.assertEqual(
             user_mission.status,
             "IN_PROGRESS",
         )
+
         self.assertIsNone(reward)
 
     def test_zero_progress_is_pending(self):
@@ -49,12 +98,21 @@ class MissionServiceTests(TestCase):
             progress=0,
         )
 
-        self.assertEqual(user_mission.progress, 0)
+        self.assertEqual(
+            user_mission.progress,
+            0,
+        )
+
         self.assertEqual(
             user_mission.status,
             "PENDING",
         )
+
         self.assertIsNone(reward)
+
+    # ============================================================
+    # COMPLETE MISSION
+    # ============================================================
 
     def test_complete_mission(self):
         user_mission, reward = MissionService.complete_mission(
@@ -62,7 +120,11 @@ class MissionServiceTests(TestCase):
             mission=self.mission,
         )
 
-        self.assertEqual(user_mission.progress, 100)
+        self.assertEqual(
+            user_mission.progress,
+            100,
+        )
+
         self.assertEqual(
             user_mission.status,
             "COMPLETED",
@@ -70,10 +132,17 @@ class MissionServiceTests(TestCase):
 
         self.user.refresh_from_db()
 
+        # Initial points = 10
+        # Mission points = 10
+        # Final points = 20
         self.assertEqual(
             self.user.points,
             20,
         )
+
+        # ---------------------------------------------------------
+        # Reward
+        # ---------------------------------------------------------
 
         self.assertIsNotNone(reward)
 
@@ -82,14 +151,30 @@ class MissionServiceTests(TestCase):
             20,
         )
 
-        self.assertIsNone(
+        # 20 points reaches Level 1.
+        # User starts at Level 0.
+        self.assertIsNotNone(
             reward["level_up"]
+        )
+
+        self.assertEqual(
+            reward["level_up"].from_level,
+            0,
+        )
+
+        self.assertEqual(
+            reward["level_up"].to_level,
+            1,
         )
 
         self.assertEqual(
             reward["badges"],
             [],
         )
+
+    # ============================================================
+    # COMPLETED MISSION CANNOT MOVE BACKWARDS
+    # ============================================================
 
     def test_completed_mission_cannot_move_backwards(self):
         user_mission, reward = MissionService.complete_mission(
@@ -128,6 +213,10 @@ class MissionServiceTests(TestCase):
 
         self.assertIsNone(second_reward)
 
+    # ============================================================
+    # COMPLETE MISSION TWICE
+    # ============================================================
+
     def test_complete_mission_twice_does_not_award_points_twice(self):
         MissionService.complete_mission(
             user=self.user,
@@ -162,7 +251,12 @@ class MissionServiceTests(TestCase):
             "COMPLETED",
         )
 
+    # ============================================================
+    # AUTOMATIC BADGE
+    # ============================================================
+
     def test_completion_returns_new_badge(self):
+
         badge = Badge.objects.create(
             name="hero",
             label="Hero",
@@ -171,7 +265,12 @@ class MissionServiceTests(TestCase):
             is_active=True,
         )
 
+        # ---------------------------------------------------------
+        # Complete first 4 missions
+        # ---------------------------------------------------------
+
         for i in range(4):
+
             mission = Mission.objects.create(
                 name=f"Mission {i}",
                 description="Test",
@@ -184,6 +283,11 @@ class MissionServiceTests(TestCase):
                 user=self.user,
                 mission=mission,
             )
+
+        # ---------------------------------------------------------
+        # Complete 5th mission
+        # This should trigger the automatic badge.
+        # ---------------------------------------------------------
 
         last_mission = Mission.objects.create(
             name="Mission 5",
@@ -213,10 +317,46 @@ class MissionAPITests(APITestCase):
 
     def setUp(self):
 
+        # ---------------------------------------------------------
+        # Test Levels
+        # ---------------------------------------------------------
+
+        Level.objects.create(
+            level=1,
+            required_points=0,
+            is_active=True,
+        )
+
+        Level.objects.create(
+            level=2,
+            required_points=100,
+            is_active=True,
+        )
+
+        Level.objects.create(
+            level=3,
+            required_points=200,
+            is_active=True,
+        )
+
+        Level.objects.create(
+            level=4,
+            required_points=300,
+            is_active=True,
+        )
+
+        # ---------------------------------------------------------
+        # Test User
+        # ---------------------------------------------------------
+
         self.user = User.objects.create_user(
             phone_number="09120000002",
             password="testpassword123",
         )
+
+        # ---------------------------------------------------------
+        # Test Mission
+        # ---------------------------------------------------------
 
         self.mission = Mission.objects.create(
             name="API Mission",
@@ -226,13 +366,23 @@ class MissionAPITests(APITestCase):
             is_active=True,
         )
 
+        # ---------------------------------------------------------
+        # JWT Authentication
+        # ---------------------------------------------------------
+
         refresh = RefreshToken.for_user(
             self.user
         )
 
         self.client.credentials(
-            HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}"
+            HTTP_AUTHORIZATION=(
+                f"Bearer {refresh.access_token}"
+            )
         )
+
+    # ============================================================
+    # START MISSION
+    # ============================================================
 
     def test_start_mission_api(self):
 
@@ -255,9 +405,14 @@ class MissionAPITests(APITestCase):
             "IN_PROGRESS",
         )
 
+    # ============================================================
+    # UPDATE MISSION PROGRESS
+    # ============================================================
+
     def test_update_progress_api(self):
+
         url = reverse(
-            "mission-progress",
+            "api_mission_progress",
             kwargs={
                 "mission_id": self.mission.id,
             },
@@ -286,9 +441,14 @@ class MissionAPITests(APITestCase):
             "IN_PROGRESS",
         )
 
+    # ============================================================
+    # COMPLETE MISSION API
+    # ============================================================
+
     def test_complete_mission_api(self):
+
         url = reverse(
-            "mission-complete",
+            "api_mission_complete",
             kwargs={
                 "mission_id": self.mission.id,
             },
@@ -305,6 +465,10 @@ class MissionAPITests(APITestCase):
             200,
         )
 
+        # ---------------------------------------------------------
+        # Basic response
+        # ---------------------------------------------------------
+
         self.assertTrue(
             response.data["ok"]
         )
@@ -314,10 +478,17 @@ class MissionAPITests(APITestCase):
             100,
         )
 
+        # User starts with 10 points.
+        # Mission awards 100 points.
+        # Final points = 110.
         self.assertEqual(
             response.data["points"],
-            20,
+            110,
         )
+
+        # ---------------------------------------------------------
+        # Rewards object
+        # ---------------------------------------------------------
 
         self.assertIn(
             "rewards",
@@ -334,8 +505,20 @@ class MissionAPITests(APITestCase):
             response.data["rewards"],
         )
 
-        self.assertIsNone(
+        # 110 points reaches Level 2.
+        # User starts at Level 0.
+        self.assertIsNotNone(
             response.data["rewards"]["level_up"]
+        )
+
+        self.assertEqual(
+            response.data["rewards"]["level_up"]["from"],
+            0,
+        )
+
+        self.assertEqual(
+            response.data["rewards"]["level_up"]["to"],
+            2,
         )
 
         self.assertEqual(
@@ -343,12 +526,16 @@ class MissionAPITests(APITestCase):
             [],
         )
 
+    # ============================================================
+    # INVALID PROGRESS
+    # ============================================================
+
     def test_invalid_progress_api(self):
 
         response = self.client.patch(
             f"/api/missions/{self.mission.id}/progress/",
             {
-                "progress": 150
+                "progress": 150,
             },
             format="json",
         )
@@ -357,6 +544,10 @@ class MissionAPITests(APITestCase):
             response.status_code,
             400,
         )
+
+    # ============================================================
+    # UNAUTHENTICATED USER
+    # ============================================================
 
     def test_unauthenticated_user_cannot_start_mission(self):
 
@@ -376,11 +567,19 @@ class MissionPermissionTests(APITestCase):
 
     def setUp(self):
 
+        # ---------------------------------------------------------
+        # Test User
+        # ---------------------------------------------------------
+
         self.user = User.objects.create_user(
             phone_number="09120000003",
             password="testpassword123",
             role="USER",
         )
+
+        # ---------------------------------------------------------
+        # Test Mission
+        # ---------------------------------------------------------
 
         self.mission = Mission.objects.create(
             name="Permission Mission",
@@ -389,13 +588,23 @@ class MissionPermissionTests(APITestCase):
             points=50,
         )
 
+        # ---------------------------------------------------------
+        # JWT Authentication
+        # ---------------------------------------------------------
+
         refresh = RefreshToken.for_user(
             self.user
         )
 
         self.client.credentials(
-            HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}"
+            HTTP_AUTHORIZATION=(
+                f"Bearer {refresh.access_token}"
+            )
         )
+
+    # ============================================================
+    # MISSION CREATION PERMISSION
+    # ============================================================
 
     def test_normal_user_cannot_create_mission(self):
 
@@ -414,4 +623,3 @@ class MissionPermissionTests(APITestCase):
             response.status_code,
             403,
         )
-

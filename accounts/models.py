@@ -365,3 +365,14 @@ class BadgeRule(models.Model):
     def __str__(self):
         return f"{self.badge.name} - {self.rule_type}"
 
+class Level(models.Model):
+    level = models.PositiveIntegerField(unique=True)
+    required_points = models.PositiveIntegerField(unique=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["required_points"]
+
+    def __str__(self):
+        return f"Level {self.level}"
+
