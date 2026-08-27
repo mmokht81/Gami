@@ -16,7 +16,7 @@ from ..serializers import (
 class MissionCreateAPIView(generics.CreateAPIView):
 
     serializer_class = MissionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminOrSuperAdmin]
 
     @extend_schema(
         summary="Create mission",
@@ -31,7 +31,7 @@ class MissionDetailUpdateDeleteAPIView(
 ):
 
     serializer_class = MissionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminOrSuperAdmin]
 
     queryset = Mission.objects.all()
 

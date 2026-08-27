@@ -11,6 +11,7 @@ from ..serializers import (
     UserMissionSerializer,
     MissionSerializer,
 )
+from ..permissions import IsAdminOrSuperAdmin
 
 class MissionListAPIView(generics.ListAPIView):
     """
@@ -96,7 +97,7 @@ class MissionManagementListAPIView(
     """
 
     serializer_class = MissionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminOrSuperAdmin]
 
     @extend_schema(
         summary="List and create missions",
@@ -123,7 +124,7 @@ class MissionManagementDetailAPIView(
     """
 
     serializer_class = MissionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminOrSuperAdmin]
 
     @extend_schema(
         summary="Get, update or delete mission",

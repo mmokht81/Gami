@@ -7,11 +7,13 @@ from .models import (
     JobPosition,
     Question,
     JobApplication,
+    Badge,
+    UserBadge
 )
 from rest_framework_simplejwt.serializers import (
     TokenObtainPairSerializer
 )
-from .models import Badge, UserBadge
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -449,8 +451,7 @@ class UserBadgeSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "badge",
-            "reason",
-            "assigned_at",
+            # "created_at",
         ]
 
 class AssignBadgeSerializer(serializers.ModelSerializer):

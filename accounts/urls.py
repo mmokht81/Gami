@@ -33,6 +33,11 @@ from .views.mission import (
     MissionManagementListAPIView,
     MissionManagementDetailAPIView,
 )
+from .views.mission_progress import (
+    MissionStartAPIView,
+    MissionProgressAPIView,
+    MissionCompleteAPIView,
+)
 from .views.job_position import (
     JobPositionListAPIView,
     JobPositionDetailAPIView,
@@ -62,9 +67,9 @@ from .views.job_application_page import job_application_page
 from .views.badge import (
     BadgeListCreateAPIView,
     BadgeDetailAPIView,
-    AssignBadgeAPIView,
     MyBadgesAPIView,
     UserBadgesAPIView,
+    AssignBadgeAPIView,
 )
 
 urlpatterns = [
@@ -110,6 +115,24 @@ urlpatterns = [
         "api/missions/<int:pk>/",
         MissionDetailAPIView.as_view(),
         name="api_mission_detail",
+    ),
+
+    path(
+        "api/missions/<int:mission_id>/start/",
+        MissionStartAPIView.as_view(),
+        name="api_mission_start",
+    ),
+
+    path(
+        "api/missions/<int:mission_id>/progress/",
+        MissionProgressAPIView.as_view(),
+        name="api_mission_progress",
+    ),
+
+    path(
+        "api/missions/<int:mission_id>/complete/",
+        MissionCompleteAPIView.as_view(),
+        name="api_mission_complete",
     ),
 
     path(
@@ -251,32 +274,32 @@ urlpatterns = [
     ),
 
     path(
-        "badges/",
+        "api/badges/",
         BadgeListCreateAPIView.as_view(),
-        name="badge-list-create",
+        name="api_badge_list_create",
     ),
 
     path(
-        "badges/<int:pk>/",
-        BadgeDetailAPIView.as_view(),
-        name="badge-detail",
-    ),
-
-    path(
-        "badges/assign/",
-        AssignBadgeAPIView.as_view(),
-        name="badge-assign",
-    ),
-
-    path(
-        "my-badges/",
+        "api/badges/my/",
         MyBadgesAPIView.as_view(),
-        name="my-badges",
+        name="api_my_badges",
     ),
 
     path(
-        "user-management/<int:user_id>/badges/",
+        "api/badges/users/<int:user_id>/",
         UserBadgesAPIView.as_view(),
-        name="user-badges",
+        name="api_user_badges",
+    ),
+
+    path(
+        "api/badges/<int:badge_id>/users/<int:user_id>/assign/",
+        AssignBadgeAPIView.as_view(),
+        name="api_badge_assign",
+    ),
+
+    path(
+        "api/badges/<int:pk>/",
+        BadgeDetailAPIView.as_view(),
+        name="api_badge_detail",
     ),
 ]

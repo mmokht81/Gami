@@ -27,6 +27,11 @@ QUESTION_TYPES = (
     ("TEMPLATE", "Template"),
     ("CUSTOM", "Custom"),
 )
+MISSION_TYPE = (
+    ("AUTOMATIC", "Automatic"),
+    ("HR", "HR"),
+    ("USER", "User"),
+)
 MISSION_STATUS = (
     ("PENDING", "Pending"),
     ("IN_PROGRESS", "In Progress"),
@@ -166,6 +171,12 @@ class Mission(models.Model):
     )
 
     description = models.TextField()
+
+    type = models.CharField(
+        max_length=20,
+        choices=MISSION_TYPE,
+        default="USER",
+    )
 
     points = models.PositiveIntegerField(
         default=0
