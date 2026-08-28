@@ -1,4 +1,5 @@
 from rest_framework import generics
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
 from drf_spectacular.utils import extend_schema
@@ -7,7 +8,9 @@ from ..models import JobApplication
 from ..serializers import (
     JobApplicationSerializer,
     JobApplicationAdminSerializer,
+    JobApplicationStatusSerializer,
 )
+from ..permissions import IsAdminOrSuperAdmin
 
 
 class JobApplicationListAPIView(generics.ListAPIView):
@@ -181,3 +184,69 @@ class JobApplicationDetailAPIView(generics.RetrieveAPIView):
                 "job_position"
             )
         )
+
+class JobApplicationStatusUpdateAPIView(
+    generics.UpdateAPIView
+):
+    """
+    API for updating job application status.
+
+    Only ADMIN and SUPERADMIN can change
+    application status.
+    """
+
+    serializer_class = JobApplicationStatusSerializer
+
+    permission_classes = [
+        IsAdminOrSuperAdmin
+    ]
+
+    queryset = JobApplication.objects.select_related(
+        "user",
+        "job_position",
+    )
+
+    @extend_schema(
+        summary="Update application status",
+        description="""
+        Allows HR/Admin to update the status
+        of a job application.
+
+        Valid statuses:
+
+        - PENDING_REVIEW
+        - HR_REVIEW
+        - WAITING_FOR_USER
+        - MANAGEMENT_REVIEW
+        - ACCEPTED
+        - REJECTED
+        """,
+        request=JobApplicationStatusSerializer,
+        responses=JobApplicationAdminSerializer,
+    )
+    def patch(self, request, *args, **kwargs):
+
+        application = self.get_object()
+
+        serializer = self.get_serializer(
+            application,
+            data=request.data,
+            partial=True,
+        )
+
+        serializer.is_valid(
+            raise_exception=True
+        )
+
+        serializer.save()
+
+        return_serializer = (
+            JobApplicationAdminSerializer(
+                application
+            )
+        )
+
+        return Response(
+            return_serializer.data
+        )
+

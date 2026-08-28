@@ -9,7 +9,8 @@ from .models import (
     JobApplication,
     Badge,
     UserBadge,
-    BadgeRule
+    BadgeRule,
+    APPLICATION_STATUS,
 )
 from rest_framework_simplejwt.serializers import (
     TokenObtainPairSerializer
@@ -148,14 +149,46 @@ class JobPositionSerializer(serializers.ModelSerializer):
         ]
 
 class QuestionSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Question
-        fields = "__all__"
+
+        fields = (
+            "id",
+            "job_position",
+            "type",
+            "text",
+            "order",
+            "is_active",
+        )
+
+        read_only_fields = (
+            "id",
+        )
+
+    def validate_order(self, value):
+
+        if value < 1:
+            raise serializers.ValidationError(
+                "order باید بزرگ‌تر از صفر باشد."
+            )
+
+        return value
+
+    def validate_text(self, value):
+
+        if not value.strip():
+            raise serializers.ValidationError(
+                "متن سوال نمی‌تواند خالی باشد."
+            )
+
+        return value.strip()
 
 class JobApplicationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = JobApplication
+
         fields = (
             "id",
             "job_position",
@@ -183,6 +216,12 @@ class JobApplicationSerializer(serializers.ModelSerializer):
 
             raise serializers.ValidationError(
                 "شما قبلاً برای این موقعیت شغلی درخواست ثبت کرده‌اید."
+            )
+
+        if not value.is_active:
+
+            raise serializers.ValidationError(
+                "این موقعیت شغلی فعال نیست."
             )
 
         return value
@@ -229,6 +268,11 @@ class JobApplicationSerializer(serializers.ModelSerializer):
         job_position = attrs.get("job_position")
         answers = attrs.get("answers", [])
 
+        if not job_position:
+            raise serializers.ValidationError({
+                "job_position": "موقعیت شغلی الزامی است."
+            })
+
         question_ids = [
             item["question_id"]
             for item in answers
@@ -243,7 +287,7 @@ class JobApplicationSerializer(serializers.ModelSerializer):
         valid_question_ids = set(
             questions.values_list(
                 "id",
-                flat=True
+                flat=True,
             )
         )
 
@@ -282,21 +326,54 @@ class JobApplicationSerializer(serializers.ModelSerializer):
 class JobApplicationAdminSerializer(serializers.ModelSerializer):
 
     user = UserSerializer(read_only=True)
-    job_position = JobPositionSerializer(read_only=True)
+
+    job_position = JobPositionSerializer(
+        read_only=True
+    )
+
+    status_display = serializers.CharField(
+        source="get_status_display",
+        read_only=True,
+    )
 
     class Meta:
         model = JobApplication
+
         fields = (
             "id",
             "user",
             "job_position",
             "status",
+            "status_display",
             "answers",
             "submitted_at",
             "updated_at",
         )
 
         read_only_fields = fields
+
+class JobApplicationStatusSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = JobApplication
+
+        fields = (
+            "status",
+        )
+
+    def validate_status(self, value):
+
+        valid_statuses = {
+            choice[0]
+            for choice in APPLICATION_STATUS
+        }
+
+        if value not in valid_statuses:
+            raise serializers.ValidationError(
+                "وضعیت انتخاب‌شده معتبر نیست."
+            )
+
+        return value
 
 class PhoneAPISerializer(serializers.Serializer):
     phone_number = serializers.CharField(max_length=11)

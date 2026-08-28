@@ -13,6 +13,9 @@ from .models import (
     UserBadge,
     BadgeRule,
     Level,
+    JobPosition,
+    Question,
+    JobApplication,
 )
 
 class MissionServiceTests(TestCase):
@@ -601,10 +604,6 @@ class MissionAPITests(APITestCase):
 
     def test_complete_mission_api(self):
 
-        # ---------------------------------------------------------
-        # Make sure the mission is assigned and pending
-        # ---------------------------------------------------------
-
         user_mission, created = (
             UserMission.objects.update_or_create(
                 user=self.user,
@@ -625,10 +624,6 @@ class MissionAPITests(APITestCase):
             user_mission.status,
             "PENDING",
         )
-
-        # ---------------------------------------------------------
-        # Start mission
-        # ---------------------------------------------------------
 
         start_url = reverse(
             "api_mission_start",
@@ -658,10 +653,6 @@ class MissionAPITests(APITestCase):
             "IN_PROGRESS",
         )
 
-        # ---------------------------------------------------------
-        # Complete mission
-        # ---------------------------------------------------------
-
         complete_url = reverse(
             "api_mission_complete",
             kwargs={
@@ -680,10 +671,6 @@ class MissionAPITests(APITestCase):
             200,
         )
 
-        # ---------------------------------------------------------
-        # Basic response
-        # ---------------------------------------------------------
-
         self.assertTrue(
             response.data["ok"]
         )
@@ -692,10 +679,6 @@ class MissionAPITests(APITestCase):
             response.data["progress"],
             100,
         )
-
-        # ---------------------------------------------------------
-        # Points
-        # ---------------------------------------------------------
 
         print("RESPONSE:", response.data)
 
@@ -718,9 +701,6 @@ class MissionAPITests(APITestCase):
             response.data["points"],
             110,
         )
-        # ---------------------------------------------------------
-        # Rewards
-        # ---------------------------------------------------------
 
         self.assertIn(
             "rewards",
@@ -737,10 +717,6 @@ class MissionAPITests(APITestCase):
             response.data["rewards"],
         )
 
-        # ---------------------------------------------------------
-        # Level up
-        # ---------------------------------------------------------
-
         self.assertIsNotNone(
             response.data["rewards"]["level_up"]
         )
@@ -755,15 +731,10 @@ class MissionAPITests(APITestCase):
             2,
         )
 
-        # ---------------------------------------------------------
-        # Badges
-        # ---------------------------------------------------------
-
         self.assertEqual(
             response.data["rewards"]["badges"],
             [],
         )
-
 
     def test_invalid_progress_api(self):
 
@@ -842,4 +813,622 @@ class MissionPermissionTests(APITestCase):
             response.status_code,
             403,
         )
+
+
+class ApplicationTests(APITestCase):
+
+    def setUp(self):
+
+        self.user = User.objects.create_user(
+            phone_number="09121111111",
+            password="testpassword123",
+        )
+
+        self.hr = User.objects.create_user(
+            phone_number="09122222222",
+            password="testpassword123",
+        )
+
+        self.hr.role = "ADMIN"
+        self.hr.is_staff = True
+        self.hr.save()
+
+        self.job_position = JobPosition.objects.create(
+            title="Backend Developer",
+            description="Django Backend Developer",
+            tags=["Django", "Python"],
+            is_active=True,
+        )
+
+        self.question_1 = Question.objects.create(
+            job_position=self.job_position,
+            type="CUSTOM",
+            text="چند سال سابقه برنامه نویسی دارید؟",
+            order=1,
+            is_active=True,
+        )
+
+        self.question_2 = Question.objects.create(
+            job_position=self.job_position,
+            type="CUSTOM",
+            text="با Django کار کرده‌اید؟",
+            order=2,
+            is_active=True,
+        )
+
+        self.authenticate_user()
+
+    def authenticate_user(self):
+
+        refresh = RefreshToken.for_user(
+            self.user
+        )
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=(
+                f"Bearer {refresh.access_token}"
+            )
+        )
+
+    def authenticate_hr(self):
+
+        refresh = RefreshToken.for_user(
+            self.hr
+        )
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=(
+                f"Bearer {refresh.access_token}"
+            )
+        )
+
+    def test_user_can_create_application(self):
+
+        url = "/api/applications/create/"
+
+        data = {
+            "job_position": self.job_position.id,
+            "answers": [
+                {
+                    "question_id": self.question_1.id,
+                    "answer": "2 سال",
+                },
+                {
+                    "question_id": self.question_2.id,
+                    "answer": "بله",
+                },
+            ],
+        }
+
+        response = self.client.post(
+            url,
+            data,
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            201,
+        )
+
+        self.assertEqual(
+            JobApplication.objects.count(),
+            1,
+        )
+
+        application = JobApplication.objects.get(
+            user=self.user
+        )
+
+        self.assertEqual(
+            application.job_position,
+            self.job_position,
+        )
+
+        self.assertEqual(
+            application.status,
+            "PENDING_REVIEW",
+        )
+
+        self.assertEqual(
+            len(application.answers),
+            2,
+        )
+
+    def test_user_cannot_apply_twice(self):
+
+        JobApplication.objects.create(
+            user=self.user,
+            job_position=self.job_position,
+            answers=[],
+        )
+
+        url = "/api/applications/create/"
+
+        data = {
+            "job_position": self.job_position.id,
+            "answers": [],
+        }
+
+        response = self.client.post(
+            url,
+            data,
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            400,
+        )
+
+        self.assertEqual(
+            JobApplication.objects.filter(
+                user=self.user,
+                job_position=self.job_position,
+            ).count(),
+            1,
+        )
+
+    def test_user_cannot_apply_to_inactive_job(self):
+
+        self.job_position.is_active = False
+        self.job_position.save()
+
+        url = "/api/applications/create/"
+
+        data = {
+            "job_position": self.job_position.id,
+            "answers": [],
+        }
+
+        response = self.client.post(
+            url,
+            data,
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            400,
+        )
+
+        self.assertFalse(
+            JobApplication.objects.filter(
+                user=self.user,
+                job_position=self.job_position,
+            ).exists()
+        )
+
+    def test_invalid_question_is_rejected(self):
+
+        other_job = JobPosition.objects.create(
+            title="Frontend Developer",
+            description="Frontend Developer",
+            is_active=True,
+        )
+
+        other_question = Question.objects.create(
+            job_position=other_job,
+            type="CUSTOM",
+            text="سوال دیگر",
+            order=1,
+            is_active=True,
+        )
+
+        url = "/api/applications/create/"
+
+        data = {
+            "job_position": self.job_position.id,
+            "answers": [
+                {
+                    "question_id": other_question.id,
+                    "answer": "Invalid",
+                },
+            ],
+        }
+
+        response = self.client.post(
+            url,
+            data,
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            400,
+        )
+
+        self.assertFalse(
+            JobApplication.objects.filter(
+                user=self.user,
+                job_position=self.job_position,
+            ).exists()
+        )
+
+    def test_user_can_view_own_applications(self):
+
+        application = JobApplication.objects.create(
+            user=self.user,
+            job_position=self.job_position,
+            answers=[
+                {
+                    "question_id": self.question_1.id,
+                    "question": self.question_1.text,
+                    "answer": "2 سال",
+                }
+            ],
+        )
+
+        response = self.client.get(
+            "/api/applications/"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertGreaterEqual(
+            len(response.data),
+            1,
+        )
+
+        self.assertEqual(
+            response.data[0]["id"],
+            application.id,
+        )
+
+    def test_user_can_view_job_questions(self):
+
+        url = (
+            f"/api/job-positions/"
+            f"{self.job_position.id}/questions/"
+        )
+
+        response = self.client.get(url)
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertGreaterEqual(
+            len(response.data),
+            2,
+        )
+
+        self.assertEqual(
+            response.data[0]["id"],
+            self.question_1.id,
+        )
+
+    def test_hr_can_create_question(self):
+
+        self.authenticate_hr()
+
+        url = "/api/questions/create/"
+
+        data = {
+            "job_position": self.job_position.id,
+            "type": "CUSTOM",
+            "text": "چرا باید شما را استخدام کنیم؟",
+            "order": 3,
+            "is_active": True,
+        }
+
+        response = self.client.post(
+            url,
+            data,
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            201,
+        )
+
+        self.assertTrue(
+            Question.objects.filter(
+                job_position=self.job_position,
+                text="چرا باید شما را استخدام کنیم؟",
+            ).exists()
+        )
+
+    def test_user_cannot_create_question(self):
+
+        url = "/api/questions/create/"
+
+        data = {
+            "job_position": self.job_position.id,
+            "type": "CUSTOM",
+            "text": "Unauthorized question",
+            "order": 3,
+            "is_active": True,
+        }
+
+        response = self.client.post(
+            url,
+            data,
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
+
+    def test_hr_can_update_question(self):
+
+        self.authenticate_hr()
+
+        url = (
+            f"/api/questions/"
+            f"{self.question_1.id}/"
+        )
+
+        data = {
+            "text": "متن سوال ویرایش شده",
+        }
+
+        response = self.client.patch(
+            url,
+            data,
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.question_1.refresh_from_db()
+
+        self.assertEqual(
+            self.question_1.text,
+            "متن سوال ویرایش شده",
+        )
+
+    def test_hr_can_delete_question(self):
+
+        self.authenticate_hr()
+
+        url = (
+            f"/api/questions/"
+            f"{self.question_2.id}/"
+        )
+
+        response = self.client.delete(url)
+
+        self.assertEqual(
+            response.status_code,
+            204,
+        )
+
+        self.assertFalse(
+            Question.objects.filter(
+                id=self.question_2.id
+            ).exists()
+        )
+
+    def test_hr_can_view_all_applications(self):
+
+        application = JobApplication.objects.create(
+            user=self.user,
+            job_position=self.job_position,
+            answers=[
+                {
+                    "question_id": self.question_1.id,
+                    "question": self.question_1.text,
+                    "answer": "2 سال",
+                }
+            ],
+        )
+
+        self.authenticate_hr()
+
+        response = self.client.get(
+            "/api/applications/"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertGreaterEqual(
+            len(response.data),
+            1,
+        )
+
+        self.assertEqual(
+            response.data[0]["id"],
+            application.id,
+        )
+
+        self.assertIn(
+            "user",
+            response.data[0],
+        )
+
+        self.assertIn(
+            "job_position",
+            response.data[0],
+        )
+
+        self.assertIn(
+            "answers",
+            response.data[0],
+        )
+
+    def test_hr_can_view_application_detail(self):
+
+        application = JobApplication.objects.create(
+            user=self.user,
+            job_position=self.job_position,
+            answers=[
+                {
+                    "question_id": self.question_1.id,
+                    "question": self.question_1.text,
+                    "answer": "2 سال",
+                }
+            ],
+        )
+
+        self.authenticate_hr()
+
+        url = (
+            f"/api/applications/"
+            f"{application.id}/"
+        )
+
+        response = self.client.get(url)
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            response.data["id"],
+            application.id,
+        )
+
+        self.assertIn(
+            "user",
+            response.data,
+        )
+
+        self.assertIn(
+            "job_position",
+            response.data,
+        )
+
+        self.assertIn(
+            "answers",
+            response.data,
+        )
+
+    def test_hr_can_change_application_status(self):
+
+        application = JobApplication.objects.create(
+            user=self.user,
+            job_position=self.job_position,
+            status="PENDING_REVIEW",
+            answers=[],
+        )
+
+        self.authenticate_hr()
+
+        url = (
+            f"/api/applications/"
+            f"{application.id}/status/"
+        )
+
+        response = self.client.patch(
+            url,
+            {
+                "status": "HR_REVIEW",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        application.refresh_from_db()
+
+        self.assertEqual(
+            application.status,
+            "HR_REVIEW",
+        )
+
+        self.assertEqual(
+            response.data["status"],
+            "HR_REVIEW",
+        )
+
+    def test_user_cannot_change_application_status(self):
+
+        application = JobApplication.objects.create(
+            user=self.user,
+            job_position=self.job_position,
+            status="PENDING_REVIEW",
+            answers=[],
+        )
+
+        url = (
+            f"/api/applications/"
+            f"{application.id}/status/"
+        )
+
+        response = self.client.patch(
+            url,
+            {
+                "status": "ACCEPTED",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
+
+        application.refresh_from_db()
+
+        self.assertEqual(
+            application.status,
+            "PENDING_REVIEW",
+        )
+
+    def test_all_application_statuses_are_valid(self):
+
+        application = JobApplication.objects.create(
+            user=self.user,
+            job_position=self.job_position,
+            status="PENDING_REVIEW",
+            answers=[],
+        )
+
+        self.authenticate_hr()
+
+        statuses = [
+            "PENDING_REVIEW",
+            "HR_REVIEW",
+            "WAITING_FOR_USER",
+            "MANAGEMENT_REVIEW",
+            "ACCEPTED",
+            "REJECTED",
+        ]
+
+        url = (
+            f"/api/applications/"
+            f"{application.id}/status/"
+        )
+
+        for status in statuses:
+
+            response = self.client.patch(
+                url,
+                {
+                    "status": status,
+                },
+                format="json",
+            )
+
+            self.assertEqual(
+                response.status_code,
+                200,
+                msg=f"Status failed: {status}",
+            )
+
+            application.refresh_from_db()
+
+            self.assertEqual(
+                application.status,
+                status,
+            )
+
 

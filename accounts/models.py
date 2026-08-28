@@ -25,9 +25,12 @@ STATUS_CHOICES = (
     ("استخدام شده", "استخدام شده"),
 )
 APPLICATION_STATUS = (
-    ("PENDING", "Pending"),
-    ("ACCEPTED", "Accepted"),
-    ("REJECTED", "Rejected"),
+    ("PENDING_REVIEW", "در انتظار بررسی"),
+    ("HR_REVIEW", "در حال بررسی توسط HR"),
+    ("WAITING_FOR_USER", "در انتظار پاسخ کاربر"),
+    ("MANAGEMENT_REVIEW", "در حال بررسی توسط مدیریت"),
+    ("ACCEPTED", "پذیرفته شده"),
+    ("REJECTED", "رد شده"),
 )
 QUESTION_TYPES = (
     ("TEMPLATE", "Template"),
@@ -223,9 +226,9 @@ class JobApplication(models.Model):
     )
 
     status = models.CharField(
-        max_length=20,
+        max_length=30,
         choices=APPLICATION_STATUS,
-        default="PENDING",
+        default="PENDING_REVIEW",
     )
 
     answers = models.JSONField(

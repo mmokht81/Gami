@@ -44,11 +44,14 @@ from .views.job_position import (
 )
 from .views.question import (
     JobQuestionListAPIView,
+    QuestionCreateAPIView,
+    QuestionDetailUpdateDeleteAPIView,
 )
 from .views.job_application import (
     JobApplicationListAPIView,
     JobApplicationCreateAPIView,
     JobApplicationDetailAPIView,
+    JobApplicationStatusUpdateAPIView,
 )
 from .views.mission_admin import (
     MissionCreateAPIView,
@@ -184,9 +187,27 @@ urlpatterns = [
     ),
 
     path(
+        "api/applications/<int:pk>/status/",
+        JobApplicationStatusUpdateAPIView.as_view(),
+        name="api_application_status_update",
+    ),
+
+    path(
         "api/job-positions/<int:job_position_id>/questions/",
         JobQuestionListAPIView.as_view(),
         name="api_job_questions",
+    ),
+
+    path(
+        "api/questions/create/",
+        QuestionCreateAPIView.as_view(),
+        name="api_question_create",
+    ),
+
+    path(
+        "api/questions/<int:pk>/",
+        QuestionDetailUpdateDeleteAPIView.as_view(),
+        name="api_question_detail",
     ),
     
     path(
