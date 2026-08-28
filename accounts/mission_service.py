@@ -1,5 +1,5 @@
-from django.db import transaction
 from django.core.exceptions import ValidationError
+from django.db import transaction
 
 from .models import Mission, UserMission
 from .reward_service import (
@@ -9,15 +9,38 @@ from .reward_service import (
 
 
 class MissionService:
+    """
+    Central service for managing the complete mission lifecycle.
+
+    Mission flow:
+
+        Assign
+          ↓
+        Start
+          ↓
+        Progress
+          ↓
+        Complete
+          ↓
+        Points
+          ↓
+        Level
+          ↓
+        Automatic Badges
+    """
+
 
     @staticmethod
     @transaction.atomic
-    def start_mission(user, mission):
+    def assign_mission(user, mission):
         """
-        Start a mission for a user.
+        Assign an active mission to an active user.
 
-        If the mission is already assigned,
-        return the existing UserMission.
+        Returns:
+            (UserMission, created)
+
+        The same mission cannot be assigned to the same
+        user more than once.
         """
 
         if not mission.is_active:
@@ -25,36 +48,9 @@ class MissionService:
                 "این ماموریت فعال نیست."
             )
 
-        user_mission, created = (
-            UserMission.objects.get_or_create(
-                user=user,
-                mission=mission,
-                defaults={
-                    "progress": 0,
-                    "status": "IN_PROGRESS",
-                },
-            )
-        )
-
-        return user_mission, created
-
-    @staticmethod
-    @transaction.atomic
-    def update_progress(user, mission, progress):
-        """
-        Update mission progress.
-
-        Progress must be between 0 and 100.
-        """
-
-        if not mission.is_active:
+        if not user.is_active:
             raise ValidationError(
-                "این ماموریت فعال نیست."
-            )
-
-        if not 0 <= progress <= 100:
-            raise ValidationError(
-                "درصد پیشرفت باید بین 0 تا 100 باشد."
+                "این کاربر فعال نیست."
             )
 
         user_mission, created = (
@@ -68,7 +64,90 @@ class MissionService:
             )
         )
 
-        # Completed missions cannot move backwards.
+        return user_mission, created
+
+
+    @staticmethod
+    @transaction.atomic
+    def start_mission(user, mission):
+        """
+        Start a mission that has already been assigned
+        to the user.
+
+        A user cannot start a mission that has not been
+        assigned to them.
+
+        Returns:
+            (UserMission, created)
+
+        created is always False because the UserMission
+        must already exist before starting.
+        """
+
+        if not mission.is_active:
+            raise ValidationError(
+                "این ماموریت فعال نیست."
+            )
+
+        try:
+            user_mission = UserMission.objects.get(
+                user=user,
+                mission=mission,
+            )
+        except UserMission.DoesNotExist:
+            raise ValidationError(
+                "این ماموریت به شما اختصاص داده نشده است."
+            )
+
+        # Already completed missions stay completed.
+        if user_mission.status == "COMPLETED":
+            return user_mission, False
+
+        # Start pending mission.
+        if user_mission.status == "PENDING":
+            user_mission.status = "IN_PROGRESS"
+
+            user_mission.save(
+                update_fields=[
+                    "status",
+                    "updated_at",
+                ]
+            )
+
+        return user_mission, False
+
+    @staticmethod
+    @transaction.atomic
+    def update_progress(user, mission, progress):
+        """
+        Update the progress of an assigned mission.
+
+        Progress must be between 0 and 100.
+
+        If progress reaches 100, the mission is completed
+        automatically and rewards are processed.
+        """
+
+        if not mission.is_active:
+            raise ValidationError(
+                "این ماموریت فعال نیست."
+            )
+
+        if not 0 <= progress <= 100:
+            raise ValidationError(
+                "درصد پیشرفت باید بین 0 تا 100 باشد."
+            )
+
+        try:
+            user_mission = UserMission.objects.get(
+                user=user,
+                mission=mission,
+            )
+        except UserMission.DoesNotExist:
+            raise ValidationError(
+                "این ماموریت به شما اختصاص داده نشده است."
+            )
+
         if user_mission.status == "COMPLETED":
             return user_mission, None
 
@@ -104,12 +183,18 @@ class MissionService:
     @transaction.atomic
     def complete_mission(user, mission):
         """
-        Complete a mission for a user.
+        Complete an assigned and started mission.
 
-        The operation is idempotent.
+        Rules:
 
-        Completing the same mission twice will NOT
-        award points or badges twice.
+        1. Mission must be active.
+        2. Mission must be assigned to the user.
+        3. Mission must be started first.
+        4. A completed mission cannot be completed again.
+        5. Points and badges are awarded only once.
+
+        Returns:
+            (UserMission, reward)
         """
 
         if not mission.is_active:
@@ -117,23 +202,26 @@ class MissionService:
                 "این ماموریت فعال نیست."
             )
 
-        user_mission, created = (
-            UserMission.objects.get_or_create(
+        try:
+            user_mission = UserMission.objects.get(
                 user=user,
                 mission=mission,
-                defaults={
-                    "progress": 100,
-                    "status": "COMPLETED",
-                },
             )
-        )
+        except UserMission.DoesNotExist:
+            raise ValidationError(
+                "این ماموریت به شما اختصاص داده نشده است."
+            )
 
-        # Already completed.
-        if (
-            not created
-            and user_mission.status == "COMPLETED"
-        ):
+
+        if user_mission.status == "COMPLETED":
             return user_mission, None
+
+
+        if user_mission.status == "PENDING":
+            raise ValidationError(
+                "ابتدا باید ماموریت را شروع کنید."
+            )
+
 
         user_mission.progress = 100
         user_mission.status = "COMPLETED"
@@ -146,56 +234,56 @@ class MissionService:
             ]
         )
 
+
         reward = MissionService._handle_completion(
             user_mission
         )
 
         return user_mission, reward
 
+
     @staticmethod
     @transaction.atomic
     def _handle_completion(user_mission):
         """
-        Handle all rewards after mission completion.
+        Handle all rewards generated by mission completion.
 
         Flow:
 
             Mission Completion
                     ↓
-                Points
+                 Points
                     ↓
-                 Level
+                  Level
                     ↓
-             Automatic Badges
+            Automatic Badges
                     ↓
               Reward Result
+
+        Returns a standardized reward dictionary:
+
+            {
+                "points": int,
+                "level_up": LevelUpResult | None,
+                "badges": list,
+            }
         """
 
         user = user_mission.user
         mission = user_mission.mission
 
-        # -----------------------------------------
-        # 1. Award points + calculate level
-        # -----------------------------------------
 
         point_result = RewardService.award_points(
             user=user,
             points=mission.points,
         )
 
-        # -----------------------------------------
-        # 2. Check automatic badges
-        # -----------------------------------------
 
         badges = (
             BadgeRewardService.check_automatic_badges(
                 user=user
             )
         )
-
-        # -----------------------------------------
-        # 3. ALWAYS return the same structure
-        # -----------------------------------------
 
         return {
             "points": point_result["points"],

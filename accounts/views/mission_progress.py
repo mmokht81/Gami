@@ -222,11 +222,9 @@ class MissionCompleteAPIView(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # -----------------------------------------
-        # If mission was already completed
-        # -----------------------------------------
-
         if reward is None:
+
+            request.user.refresh_from_db()
 
             return Response(
                 {
@@ -240,10 +238,8 @@ class MissionCompleteAPIView(generics.GenericAPIView):
                 },
                 status=status.HTTP_200_OK,
             )
-
-        # -----------------------------------------
-        # Build reward response
-        # -----------------------------------------
+        
+        request.user.refresh_from_db()
 
         reward_response = RewardResponseBuilder.build(
             user=request.user,
