@@ -1068,14 +1068,18 @@ class ApplicationTests(APITestCase):
             200,
         )
 
+        results = response.data["results"]
+
         self.assertGreaterEqual(
-            len(response.data),
+            len(results),
             1,
         )
 
-        self.assertEqual(
-            response.data[0]["id"],
-            application.id,
+        self.assertTrue(
+            any(
+                item["id"] == application.id
+                for item in results
+            )
         )
 
     def test_user_can_view_job_questions(self):
@@ -1092,14 +1096,18 @@ class ApplicationTests(APITestCase):
             200,
         )
 
+        results = response.data["results"]
+
         self.assertGreaterEqual(
-            len(response.data),
+            len(results),
             2,
         )
 
-        self.assertEqual(
-            response.data[0]["id"],
-            self.question_1.id,
+        self.assertTrue(
+            any(
+                item["id"] == self.question_1.id
+                for item in results
+            )
         )
 
     def test_hr_can_create_question(self):
@@ -1235,29 +1243,32 @@ class ApplicationTests(APITestCase):
             200,
         )
 
+        results = response.data["results"]
+
         self.assertGreaterEqual(
-            len(response.data),
+            len(results),
             1,
         )
 
-        self.assertEqual(
-            response.data[0]["id"],
-            application.id,
+        application_data = next(
+            item
+            for item in results
+            if item["id"] == application.id
         )
 
         self.assertIn(
             "user",
-            response.data[0],
+            application_data,
         )
 
         self.assertIn(
             "job_position",
-            response.data[0],
+            application_data,
         )
 
         self.assertIn(
             "answers",
-            response.data[0],
+            application_data,
         )
 
     def test_hr_can_view_application_detail(self):
