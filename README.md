@@ -135,29 +135,6 @@ Authorization: Bearer <access_token>
 
 ---
 
-## Project Structure
-
-```
-accounts/
-    models.py
-    serializers.py
-    urls.py
-    views/
-        auth.py
-        auth_api.py
-        profile.py
-        leaderboard.py
-        mission.py
-        dashboard.py
-        job_position.py
-        job_application.py
-        application_answer.py
-
-Gami/
-manage.py
-requirements.txt
-```
-
 ---
 
 ## License
