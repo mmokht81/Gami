@@ -5,6 +5,7 @@ from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .mission_service import MissionService
+
 from .models import (
     User,
     Mission,
@@ -17,6 +18,8 @@ from .models import (
     Question,
     JobApplication,
 )
+
+from .serializers import JobApplicationSerializer
 
 class MissionServiceTests(TestCase):
 
@@ -1442,4 +1445,463 @@ class ApplicationTests(APITestCase):
                 status,
             )
 
+class JobApplicationValidationTests(APITestCase):
+
+    def setUp(self):
+
+        self.user = User.objects.create_user(
+            phone_number="09121111111",
+            password="testpassword123",
+        )
+
+        self.other_user = User.objects.create_user(
+            phone_number="09122222222",
+            password="testpassword123",
+        )
+
+        self.frontend = JobPosition.objects.create(
+            title="Frontend Developer",
+            description="Frontend Developer position",
+            is_active=True,
+        )
+
+        self.backend = JobPosition.objects.create(
+            title="Backend Developer",
+            description="Backend Developer position",
+            is_active=True,
+        )
+
+        self.question_1 = Question.objects.create(
+            job_position=self.frontend,
+            type="TEXT",
+            text="What is React?",
+            order=1,
+            is_active=True,
+        )
+
+        self.question_2 = Question.objects.create(
+            job_position=self.frontend,
+            type="TEXT",
+            text="What is JavaScript?",
+            order=2,
+            is_active=True,
+        )
+
+        self.backend_question = Question.objects.create(
+            job_position=self.backend,
+            type="TEXT",
+            text="What is Django?",
+            order=1,
+            is_active=True,
+        )
+
+        refresh = RefreshToken.for_user(
+            self.user
+        )
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=(
+                f"Bearer {refresh.access_token}"
+            )
+        )
+
+    # --------------------------------------------------
+    # Helper
+    # --------------------------------------------------
+
+    def build_application_data(
+        self,
+        question_1_id,
+        question_2_id,
+    ):
+
+        return {
+            "job_position": self.frontend.id,
+            "answers": [
+                {
+                    "question_id": question_1_id,
+                    "answer": "React is a JavaScript library.",
+                },
+                {
+                    "question_id": question_2_id,
+                    "answer": "JavaScript is a programming language.",
+                },
+            ],
+        }
+
+    # --------------------------------------------------
+    # 1. Integer question IDs
+    # --------------------------------------------------
+
+    def test_application_accepts_integer_question_ids(self):
+
+        data = self.build_application_data(
+            self.question_1.id,
+            self.question_2.id,
+        )
+
+        serializer = JobApplicationSerializer(
+            data=data,
+            context={
+                "request": self.client,
+            },
+        )
+
+        self.assertTrue(
+            serializer.is_valid(),
+            serializer.errors,
+        )
+
+        self.assertEqual(
+            serializer.validated_data["answers"][0][
+                "question_id"
+            ],
+            self.question_1.id,
+        )
+
+    # --------------------------------------------------
+    # 2. String question IDs
+    # --------------------------------------------------
+
+    def test_application_accepts_string_question_ids(self):
+
+        data = self.build_application_data(
+            str(self.question_1.id),
+            str(self.question_2.id),
+        )
+
+        serializer = JobApplicationSerializer(
+            data=data,
+            context={
+                "request": self.client,
+            },
+        )
+
+        self.assertTrue(
+            serializer.is_valid(),
+            serializer.errors,
+        )
+
+        self.assertEqual(
+            serializer.validated_data["answers"][0][
+                "question_id"
+            ],
+            self.question_1.id,
+        )
+
+        self.assertIsInstance(
+            serializer.validated_data["answers"][0][
+                "question_id"
+            ],
+            int,
+        )
+
+    # --------------------------------------------------
+    # 3. Question from another job position
+    # --------------------------------------------------
+
+    def test_question_from_another_job_position_is_rejected(self):
+
+        data = {
+            "job_position": self.frontend.id,
+            "answers": [
+                {
+                    "question_id": self.question_1.id,
+                    "answer": "React",
+                },
+                {
+                    "question_id": self.backend_question.id,
+                    "answer": "Django",
+                },
+            ],
+        }
+
+        serializer = JobApplicationSerializer(
+            data=data,
+            context={
+                "request": self.client,
+            },
+        )
+
+        self.assertFalse(
+            serializer.is_valid()
+        )
+
+        self.assertIn(
+            "answers",
+            serializer.errors,
+        )
+
+        self.assertIn(
+            str(self.backend_question.id),
+            str(serializer.errors["answers"]),
+        )
+
+    # --------------------------------------------------
+    # 4. Inactive question
+    # --------------------------------------------------
+
+    def test_inactive_question_is_rejected(self):
+
+        inactive_question = Question.objects.create(
+            job_position=self.frontend,
+            type="TEXT",
+            text="Inactive question",
+            order=3,
+            is_active=False,
+        )
+
+        data = {
+            "job_position": self.frontend.id,
+            "answers": [
+                {
+                    "question_id": self.question_1.id,
+                    "answer": "React",
+                },
+                {
+                    "question_id": self.question_2.id,
+                    "answer": "JavaScript",
+                },
+                {
+                    "question_id": inactive_question.id,
+                    "answer": "Should fail",
+                },
+            ],
+        }
+
+        serializer = JobApplicationSerializer(
+            data=data,
+            context={
+                "request": self.client,
+            },
+        )
+
+        self.assertFalse(
+            serializer.is_valid()
+        )
+
+        self.assertIn(
+            "answers",
+            serializer.errors,
+        )
+
+    # --------------------------------------------------
+    # 5. Empty answer
+    # --------------------------------------------------
+
+    def test_empty_answer_is_rejected(self):
+
+        data = {
+            "job_position": self.frontend.id,
+            "answers": [
+                {
+                    "question_id": self.question_1.id,
+                    "answer": "",
+                },
+                {
+                    "question_id": self.question_2.id,
+                    "answer": "JavaScript",
+                },
+            ],
+        }
+
+        serializer = JobApplicationSerializer(
+            data=data,
+            context={
+                "request": self.client,
+            },
+        )
+
+        self.assertFalse(
+            serializer.is_valid()
+        )
+
+        self.assertIn(
+            "answers",
+            serializer.errors,
+        )
+
+    # --------------------------------------------------
+    # 6. Missing answer
+    # --------------------------------------------------
+
+    def test_missing_answer_is_rejected(self):
+
+        data = {
+            "job_position": self.frontend.id,
+            "answers": [
+                {
+                    "question_id": self.question_1.id,
+                    "answer": "React",
+                },
+            ],
+        }
+
+        serializer = JobApplicationSerializer(
+            data=data,
+            context={
+                "request": self.client,
+            },
+        )
+
+        self.assertFalse(
+            serializer.is_valid()
+        )
+
+        self.assertIn(
+            "answers",
+            serializer.errors,
+        )
+
+        self.assertIn(
+            str(self.question_2.id),
+            str(serializer.errors["answers"]),
+        )
+
+    # --------------------------------------------------
+    # 7. Duplicate question
+    # --------------------------------------------------
+
+    def test_duplicate_question_is_rejected(self):
+
+        data = {
+            "job_position": self.frontend.id,
+            "answers": [
+                {
+                    "question_id": self.question_1.id,
+                    "answer": "First answer",
+                },
+                {
+                    "question_id": self.question_1.id,
+                    "answer": "Second answer",
+                },
+                {
+                    "question_id": self.question_2.id,
+                    "answer": "JavaScript",
+                },
+            ],
+        }
+
+        serializer = JobApplicationSerializer(
+            data=data,
+            context={
+                "request": self.client,
+            },
+        )
+
+        self.assertFalse(
+            serializer.is_valid()
+        )
+
+        self.assertIn(
+            "answers",
+            serializer.errors,
+        )
+
+    # --------------------------------------------------
+    # 8. All questions answered
+    # --------------------------------------------------
+
+    def test_all_active_questions_can_be_answered(self):
+
+        data = self.build_application_data(
+            self.question_1.id,
+            self.question_2.id,
+        )
+
+        serializer = JobApplicationSerializer(
+            data=data,
+            context={
+                "request": self.client,
+            },
+        )
+
+        self.assertTrue(
+            serializer.is_valid(),
+            serializer.errors,
+        )
+
+        normalized_answers = (
+            serializer.validated_data["answers"]
+        )
+
+        self.assertEqual(
+            len(normalized_answers),
+            2,
+        )
+
+        self.assertEqual(
+            normalized_answers[0]["question_id"],
+            self.question_1.id,
+        )
+
+        self.assertEqual(
+            normalized_answers[0]["question"],
+            self.question_1.text,
+        )
+
+    # --------------------------------------------------
+    # 9. No questions for job position
+    # --------------------------------------------------
+
+    def test_empty_answers_are_allowed_when_job_has_no_questions(self):
+
+        empty_job = JobPosition.objects.create(
+            title="UI Designer",
+            description="UI Designer position",
+            is_active=True,
+        )
+
+        data = {
+            "job_position": empty_job.id,
+            "answers": [],
+        }
+
+        serializer = JobApplicationSerializer(
+            data=data,
+            context={
+                "request": self.client,
+            },
+        )
+
+        self.assertTrue(
+            serializer.is_valid(),
+            serializer.errors,
+        )
+
+    # --------------------------------------------------
+    # 10. Non-numeric question ID
+    # --------------------------------------------------
+
+    def test_non_numeric_question_id_is_rejected(self):
+
+        data = {
+            "job_position": self.frontend.id,
+            "answers": [
+                {
+                    "question_id": "abc",
+                    "answer": "React",
+                },
+                {
+                    "question_id": self.question_2.id,
+                    "answer": "JavaScript",
+                },
+            ],
+        }
+
+        serializer = JobApplicationSerializer(
+            data=data,
+            context={
+                "request": self.client,
+            },
+        )
+
+        self.assertFalse(
+            serializer.is_valid()
+        )
+
+        self.assertIn(
+            "answers",
+            serializer.errors,
+        )
 

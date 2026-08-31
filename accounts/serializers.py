@@ -184,7 +184,34 @@ class QuestionSerializer(serializers.ModelSerializer):
 
         return value.strip()
 
+class ApplicationAnswerInputSerializer(serializers.Serializer):
+    """
+    Validates a single answer submitted for a job application.
+
+    question_id accepts both:
+        4
+        "4"
+
+    and normalizes both values to:
+        4
+    """
+
+    question_id = serializers.IntegerField(
+        min_value=1
+    )
+
+    answer = serializers.CharField(
+        allow_blank=False,
+        trim_whitespace=True,
+    )
+
+
 class JobApplicationSerializer(serializers.ModelSerializer):
+
+    answers = ApplicationAnswerInputSerializer(
+        many=True,
+        allow_empty=True,
+    )
 
     class Meta:
         model = JobApplication
@@ -207,16 +234,27 @@ class JobApplicationSerializer(serializers.ModelSerializer):
 
     def validate_job_position(self, value):
 
-        user = self.context["request"].user
+        request = self.context.get("request")
 
-        if JobApplication.objects.filter(
-            user=user,
-            job_position=value
-        ).exists():
+        if request is not None:
 
-            raise serializers.ValidationError(
-                "شما قبلاً برای این موقعیت شغلی درخواست ثبت کرده‌اید."
+            user = getattr(
+                request,
+                "user",
+                None,
             )
+
+            if user is not None and user.is_authenticated:
+
+                if JobApplication.objects.filter(
+                    user=user,
+                    job_position=value,
+                ).exists():
+
+                    raise serializers.ValidationError(
+                        "شما قبلاً برای این موقعیت شغلی "
+                        "درخواست ثبت کرده‌اید."
+                    )
 
         if not value.is_active:
 
@@ -228,38 +266,20 @@ class JobApplicationSerializer(serializers.ModelSerializer):
 
     def validate_answers(self, value):
 
-        if not isinstance(value, list):
+        question_ids = [
+            item["question_id"]
+            for item in value
+        ]
+
+        # --------------------------------------------------
+        # 1. Prevent duplicate answers
+        # --------------------------------------------------
+
+        if len(question_ids) != len(set(question_ids)):
+
             raise serializers.ValidationError(
-                "answers باید یک آرایه باشد."
+                "یک سوال نمی‌تواند بیشتر از یک پاسخ داشته باشد."
             )
-
-        question_ids = []
-
-        for item in value:
-
-            if not isinstance(item, dict):
-                raise serializers.ValidationError(
-                    "هر پاسخ باید یک object باشد."
-                )
-
-            if "question_id" not in item:
-                raise serializers.ValidationError(
-                    "question_id برای هر پاسخ الزامی است."
-                )
-
-            if "answer" not in item:
-                raise serializers.ValidationError(
-                    "answer برای هر سوال الزامی است."
-                )
-
-            question_id = item["question_id"]
-
-            if question_id in question_ids:
-                raise serializers.ValidationError(
-                    "یک سوال نمی‌تواند بیشتر از یک پاسخ داشته باشد."
-                )
-
-            question_ids.append(question_id)
 
         return value
 
@@ -269,8 +289,11 @@ class JobApplicationSerializer(serializers.ModelSerializer):
         answers = attrs.get("answers", [])
 
         if not job_position:
+
             raise serializers.ValidationError({
-                "job_position": "موقعیت شغلی الزامی است."
+                "job_position": (
+                    "موقعیت شغلی الزامی است."
+                )
             })
 
         question_ids = [
@@ -278,45 +301,91 @@ class JobApplicationSerializer(serializers.ModelSerializer):
             for item in answers
         ]
 
-        questions = Question.objects.filter(
-            id__in=question_ids,
+        # --------------------------------------------------
+        # 2. Get all active questions belonging to this job
+        # --------------------------------------------------
+
+        job_questions = Question.objects.filter(
             job_position=job_position,
             is_active=True,
-        )
+        ).order_by("order")
 
         valid_question_ids = set(
-            questions.values_list(
+            job_questions.values_list(
                 "id",
                 flat=True,
             )
         )
 
-        for question_id in question_ids:
+        submitted_question_ids = set(
+            question_ids
+        )
 
-            if question_id not in valid_question_ids:
+        # --------------------------------------------------
+        # 3. Reject questions that don't belong to job
+        # --------------------------------------------------
 
-                raise serializers.ValidationError({
-                    "answers": (
-                        f"سوال {question_id} مربوط به "
-                        "این موقعیت شغلی نیست."
-                    )
-                })
+        invalid_question_ids = (
+            submitted_question_ids
+            - valid_question_ids
+        )
+
+        if invalid_question_ids:
+
+            invalid_question_id = sorted(
+                invalid_question_ids
+            )[0]
+
+            raise serializers.ValidationError({
+                "answers": (
+                    f"سوال {invalid_question_id} مربوط به "
+                    "این موقعیت شغلی نیست."
+                )
+            })
+
+        # --------------------------------------------------
+        # 4. Make sure all active questions are answered
+        # --------------------------------------------------
+
+        missing_question_ids = (
+            valid_question_ids
+            - submitted_question_ids
+        )
+
+        if missing_question_ids:
+
+            missing_question_id = sorted(
+                missing_question_ids
+            )[0]
+
+            raise serializers.ValidationError({
+                "answers": (
+                    f"پاسخ سوال {missing_question_id} "
+                    "الزامی است."
+                )
+            })
+
+        # --------------------------------------------------
+        # 5. Normalize and snapshot question information
+        # --------------------------------------------------
 
         question_map = {
             question.id: question
-            for question in questions
+            for question in job_questions
         }
 
         normalized_answers = []
 
         for item in answers:
 
-            question = question_map[item["question_id"]]
+            question = question_map[
+                item["question_id"]
+            ]
 
             normalized_answers.append({
                 "question_id": question.id,
                 "question": question.text,
-                "answer": item["answer"],
+                "answer": item["answer"].strip(),
             })
 
         attrs["answers"] = normalized_answers
