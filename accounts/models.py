@@ -117,14 +117,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         default="جویای کار",
     )
 
-    team = models.ForeignKey(
-        "Team",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="members",
-    )
-
     is_phone_verified = models.BooleanField(
         default=False,
     )
@@ -297,6 +289,14 @@ class Onboarding(models.Model):
     job_position = models.ForeignKey(
         JobPosition,
         on_delete=models.PROTECT,
+        related_name="onboardings",
+    )
+
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="onboardings",
     )
 

@@ -6,33 +6,48 @@ from ..permissions import IsAdminOrSuperAdmin
 from ..serializers import OnboardingSerializer
 
 
-class MyOnboardingAPIView(generics.RetrieveAPIView):
+class MyOnboardingAPIView(
+    generics.RetrieveAPIView
+):
     """
     Return the complete onboarding dashboard
     for the authenticated user.
     """
 
     serializer_class = OnboardingSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [
+        IsAuthenticated
+    ]
 
     def get_object(self):
 
-        return Onboarding.objects.select_related(
-            "user",
-            "job_position",
-            "user__team",
-        ).prefetch_related(
-            "checklist_progress_items__checklist_item",
-            "user__badges__badge",
-        ).get(
-            user=self.request.user
+        return (
+            Onboarding.objects
+            .select_related(
+                "user",
+                "job_position",
+                "team",
+            )
+            .prefetch_related(
+                "checklist_progress_items__checklist_item",
+                "team__onboardings__user",
+                "user__badges__badge",
+            )
+            .get(
+                user=self.request.user
+            )
         )
 
 
-class UserOnboardingAPIView(generics.RetrieveAPIView):
+class UserOnboardingAPIView(
+    generics.RetrieveAPIView
+):
 
     serializer_class = OnboardingSerializer
-    permission_classes = [IsAdminOrSuperAdmin]
+
+    permission_classes = [
+        IsAdminOrSuperAdmin
+    ]
 
     lookup_url_kwarg = "user_id"
 
@@ -43,10 +58,11 @@ class UserOnboardingAPIView(generics.RetrieveAPIView):
             .select_related(
                 "user",
                 "job_position",
-                "user__team",
+                "team",
             )
             .prefetch_related(
                 "checklist_progress_items__checklist_item",
+                "team__onboardings__user",
                 "user__badges__badge",
             )
         )

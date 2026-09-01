@@ -1,14 +1,22 @@
 import secrets
-from .models import OTP, User
+
 from django.db import transaction
 from django.db.models import F
+from django.utils import timezone
+
 from .models import (
+    OTP,
+    User,
+    Badge,
+    UserBadge,
+    BadgeRule,
+    UserMission,
     Onboarding,
     OnboardingChecklistItem,
     OnboardingChecklistProgress,
     JobPosition,
-    User,
 )
+
 class OTPService:
     OTP_LENGTH = 6
     MAX_ATTEMPTS = 5

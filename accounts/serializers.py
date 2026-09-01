@@ -23,9 +23,9 @@ from rest_framework_simplejwt.serializers import (
 
 class UserSerializer(serializers.ModelSerializer):
 
-    team = serializers.PrimaryKeyRelatedField(
-        read_only=True
-    )
+    # team = serializers.PrimaryKeyRelatedField(
+    #     read_only=True
+    # )
     
     class Meta:
         model = User
@@ -705,13 +705,11 @@ class AssignBadgeSerializer(serializers.Serializer):
 
 class TeamSerializer(serializers.ModelSerializer):
 
-    members = UserSerializer(
-        many=True,
-        read_only=True,
-    )
+    members = serializers.SerializerMethodField()
 
     class Meta:
         model = Team
+
         fields = (
             "id",
             "name",
@@ -729,6 +727,23 @@ class TeamSerializer(serializers.ModelSerializer):
             "updated_at",
         )
 
+    def get_members(self, obj):
+        onboardings = (
+            obj.onboardings
+            .select_related("user")
+            .filter(
+                user__is_active=True,
+            )
+        )
+
+        return UserSerializer(
+            [
+                onboarding.user
+                for onboarding in onboardings
+            ],
+            many=True,
+        ).data
+
 class OnboardingChecklistItemSerializer(
     serializers.ModelSerializer
 ):
@@ -738,7 +753,6 @@ class OnboardingChecklistItemSerializer(
 
         fields = (
             "id",
-            "job_position",
             "icon",
             "points",
             "title",
@@ -746,24 +760,18 @@ class OnboardingChecklistItemSerializer(
             "description",
             "order",
             "is_active",
-            "created_at",
-            "updated_at",
         )
 
         read_only_fields = (
             "id",
-            "created_at",
-            "updated_at",
         )
 
 class OnboardingChecklistProgressSerializer(
     serializers.ModelSerializer
 ):
 
-    checklist_item = (
-        OnboardingChecklistItemSerializer(
-            read_only=True
-        )
+    checklist_item = OnboardingChecklistItemSerializer(
+        read_only=True
     )
 
     class Meta:
@@ -776,74 +784,91 @@ class OnboardingChecklistProgressSerializer(
             "completed_at",
         )
 
-        read_only_fields = fields
+        read_only_fields = (
+            "id",
+            "completed_at",
+        )
+
+class OnboardingTeamSerializer(
+    serializers.ModelSerializer
+):
+
+    members = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Team
+
+        fields = (
+            "id",
+            "name",
+            "description",
+            "members",
+        )
+
+    def get_members(self, obj):
+
+        onboardings = (
+            obj.onboardings
+            .select_related("user")
+            .filter(
+                user__is_active=True,
+            )
+        )
+
+        return UserSerializer(
+            [
+                onboarding.user
+                for onboarding in onboardings
+            ],
+            many=True,
+        ).data
 
 class OnboardingSerializer(
     serializers.ModelSerializer
 ):
 
+    job_position = JobPositionSerializer(
+        read_only=True
+    )
+
+    team = OnboardingTeamSerializer(
+        read_only=True
+    )
+
     checklist = serializers.SerializerMethodField()
-    team = serializers.SerializerMethodField()
-    badges = serializers.SerializerMethodField()
 
     class Meta:
         model = Onboarding
 
         fields = (
             "id",
+            "user",
             "job_position",
-            "progress",
+            "team",
             "checklist_progress",
             "hr_progress",
+            "progress",
             "checklist",
-            "team",
-            "badges",
             "created_at",
             "updated_at",
         )
 
-        read_only_fields = fields
+        read_only_fields = (
+            "id",
+            "user",
+            "job_position",
+            "team",
+            "checklist_progress",
+            "progress",
+            "checklist",
+            "created_at",
+            "updated_at",
+        )
 
     def get_checklist(self, obj):
 
-        items = (
-            obj.checklist_progress_items
-            .select_related("checklist_item")
-            .filter(
-                checklist_item__is_active=True,
-            )
-            .order_by(
-                "checklist_item__order",
-                "checklist_item__id",
-            )
-        )
-
         return OnboardingChecklistProgressSerializer(
-            items,
-            many=True,
-        ).data
-
-    def get_team(self, obj):
-
-        team = obj.user.team
-
-        if not team:
-            return None
-
-        return TeamSerializer(team).data
-
-    def get_badges(self, obj):
-
-        badges = (
-            obj.user.badges
-            .select_related("badge")
-            .filter(
-                badge__is_active=True,
-            )
-        )
-
-        return UserBadgeSerializer(
-            badges,
+            obj.checklist_progress_items.all(),
             many=True,
         ).data
 

@@ -78,6 +78,10 @@ from .views.onboarding import (
     MyOnboardingAPIView,
     UserOnboardingAPIView,
 )
+from .views.team import (
+    TeamListCreateAPIView,
+    TeamDetailUpdateDeleteAPIView,
+)
 
 urlpatterns = [
 
@@ -338,5 +342,17 @@ urlpatterns = [
         "api/onboarding/users/<int:user_id>/",
         UserOnboardingAPIView.as_view(),
         name="api_user_onboarding",
+    ),
+
+    path(
+        "api/teams/",
+        TeamListCreateAPIView.as_view(),
+        name="api_team_list_create",
+    ),
+
+    path(
+        "api/teams/<int:pk>/",
+        TeamDetailUpdateDeleteAPIView.as_view(),
+        name="api_team_detail",
     ),
 ]
