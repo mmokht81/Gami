@@ -116,6 +116,17 @@ class RewardService:
 
         level_result = LevelService.update_level(user)
 
+        if (
+            level_result["level_up"]
+            and level_result["new_level"] == 1
+        ):
+
+            from .services import OnboardingService
+
+            OnboardingService.ensure_for_level_one_user(
+                user
+            )
+
         level_up = None
 
         if level_result["level_up"]:

@@ -15,9 +15,12 @@ from .models import (
     OnboardingChecklistItem,
     OnboardingChecklistProgress,
     JobPosition,
+    JobApplication,
 )
 
+
 class OTPService:
+
     OTP_LENGTH = 6
     MAX_ATTEMPTS = 5
     RESEND_TIMEOUT = 120
@@ -31,6 +34,7 @@ class OTPService:
 
     @staticmethod
     def create_otp(phone_number):
+
         OTP.objects.filter(
             phone_number=phone_number,
             is_used=False,
@@ -45,6 +49,7 @@ class OTPService:
 
     @staticmethod
     def can_request_new_otp(phone_number):
+
         otp = (
             OTP.objects.filter(
                 phone_number=phone_number,
@@ -78,6 +83,7 @@ class OTPService:
             }
 
         if otp.is_expired():
+
             otp.is_used = True
             otp.save(update_fields=["is_used"])
 
@@ -87,23 +93,38 @@ class OTPService:
             }
 
         if otp.code != code:
+
             otp.attempts += 1
 
             if otp.attempts >= OTPService.MAX_ATTEMPTS:
+
                 otp.is_used = True
-                otp.save(update_fields=["attempts", "is_used"])
+
+                otp.save(
+                    update_fields=[
+                        "attempts",
+                        "is_used",
+                    ]
+                )
 
                 return {
                     "success": False,
                     "error": "max_attempts",
                 }
 
-            otp.save(update_fields=["attempts"])
+            otp.save(
+                update_fields=[
+                    "attempts"
+                ]
+            )
 
             return {
                 "success": False,
                 "error": "invalid_code",
-                "remaining_attempts": OTPService.MAX_ATTEMPTS - otp.attempts,
+                "remaining_attempts": (
+                    OTPService.MAX_ATTEMPTS
+                    - otp.attempts
+                ),
             }
 
         otp.is_used = True
@@ -114,46 +135,63 @@ class OTPService:
         ).first()
 
         if not user:
+
             return {
                 "success": False,
                 "error": "user_not_found",
             }
 
         user.is_phone_verified = True
-        user.save(update_fields=["is_phone_verified"])
+
+        user.save(
+            update_fields=[
+                "is_phone_verified"
+            ]
+        )
 
         return {
             "success": True,
             "user": user,
         }
 
+
 class PointService:
 
     @staticmethod
     @transaction.atomic
     def award_points(user, points):
+
         if points <= 0:
             return user
 
         user.points = F("points") + points
-        user.save(update_fields=["points"])
-        user.refresh_from_db(fields=["points"])
+
+        user.save(
+            update_fields=[
+                "points"
+            ]
+        )
+
+        user.refresh_from_db(
+            fields=[
+                "points"
+            ]
+        )
 
         return user
 
 class BadgeService:
-
+    
     @staticmethod
     def check_automatic_badges(user):
-        """
-        Check all active badge rules and award
-        badges whose conditions are satisfied.
-        """
-
-        badges = Badge.objects.filter(
-            is_active=True,
-            rule__is_active=True,
-        ).select_related("rule")
+        badges = (
+            Badge.objects
+            .filter(
+                is_active=True,
+                rule__is_active=True,
+            )
+            .select_related("rule")
+        )
 
         for badge in badges:
 
@@ -161,10 +199,14 @@ class BadgeService:
 
             if rule.rule_type == "MISSIONS_COMPLETED":
 
-                completed_missions = UserMission.objects.filter(
-                    user=user,
-                    status="COMPLETED",
-                ).count()
+                completed_missions = (
+                    UserMission.objects
+                    .filter(
+                        user=user,
+                        status="COMPLETED",
+                    )
+                    .count()
+                )
 
                 if completed_missions >= rule.value:
 
@@ -173,21 +215,30 @@ class BadgeService:
                         badge=badge,
                     )
 
+
 class OnboardingService:
 
     @staticmethod
     @transaction.atomic
     def create_for_user(user, job_position):
 
-        onboarding, created = Onboarding.objects.get_or_create(
-            user=user,
-            defaults={
-                "job_position": job_position,
-            },
+        onboarding, created = (
+            Onboarding.objects.get_or_create(
+                user=user,
+                defaults={
+                    "job_position": job_position,
+                },
+            )
         )
 
-        if not created and onboarding.job_position_id != job_position.id:
+        if (
+            not created
+            and onboarding.job_position_id
+            != job_position.id
+        ):
+
             onboarding.job_position = job_position
+
             onboarding.save()
 
         checklist_items = (
@@ -196,7 +247,10 @@ class OnboardingService:
                 job_position=job_position,
                 is_active=True,
             )
-            .order_by("order", "id")
+            .order_by(
+                "order",
+                "id",
+            )
         )
 
         for item in checklist_items:
@@ -213,6 +267,44 @@ class OnboardingService:
         return onboarding
 
     @staticmethod
+    @transaction.atomic
+    def ensure_for_level_one_user(user):
+
+        """
+        Create onboarding automatically when:
+
+        1. User is Level 1
+        2. User has an accepted job application
+
+        OneToOneField guarantees that only one
+        onboarding can exist for the user.
+        """
+
+        if user.level != 1:
+            return None
+
+        application = (
+            JobApplication.objects
+            .filter(
+                user=user,
+                status="ACCEPTED",
+            )
+            .select_related(
+                "job_position"
+            )
+            .order_by("-updated_at")
+            .first()
+        )
+
+        if application is None:
+            return None
+
+        return OnboardingService.create_for_user(
+            user=user,
+            job_position=application.job_position,
+        )
+
+    @staticmethod
     def update_checklist_progress(onboarding):
 
         items = (
@@ -225,11 +317,18 @@ class OnboardingService:
         total = items.count()
 
         if total == 0:
+
             onboarding.checklist_progress = 0
+
         else:
-            completed = items.filter(
-                is_completed=True
-            ).count()
+
+            completed = (
+                items
+                .filter(
+                    is_completed=True
+                )
+                .count()
+            )
 
             onboarding.checklist_progress = round(
                 completed * 100 / total
@@ -246,35 +345,53 @@ class OnboardingService:
         return onboarding
 
     @staticmethod
+    @transaction.atomic
     def complete_checklist_item(
         onboarding,
         checklist_item,
     ):
 
-        progress = (
-            OnboardingChecklistProgress.objects.get(
+        if (
+            checklist_item.job_position_id
+            != onboarding.job_position_id
+        ):
+
+            raise ValueError(
+                "این آیتم مربوط به موقعیت شغلی این Onboarding نیست."
+            )
+
+        progress, created = (
+            OnboardingChecklistProgress.objects
+            .get_or_create(
                 onboarding=onboarding,
                 checklist_item=checklist_item,
             )
         )
 
-        progress.is_completed = True
-        progress.completed_at = timezone.now()
-        progress.save(
-            update_fields=[
-                "is_completed",
-                "completed_at",
-            ]
-        )
+        if not progress.is_completed:
+
+            progress.is_completed = True
+            progress.completed_at = timezone.now()
+
+            progress.save(
+                update_fields=[
+                    "is_completed",
+                    "completed_at",
+                ]
+            )
 
         return OnboardingService.update_checklist_progress(
             onboarding
         )
 
     @staticmethod
-    def set_hr_progress(onboarding, value):
+    def set_hr_progress(
+        onboarding,
+        value,
+    ):
 
         if not 0 <= value <= 100:
+
             raise ValueError(
                 "HR progress must be between 0 and 100."
             )
@@ -290,4 +407,31 @@ class OnboardingService:
         )
 
         return onboarding
+
+    @staticmethod
+    @transaction.atomic
+    def assign_team(
+        onboarding,
+        team,
+    ):
+
+        onboarding.team = team
+
+        onboarding.save(
+            update_fields=[
+                "team",
+                "updated_at",
+            ]
+        )
+
+        return onboarding
+
+    @staticmethod
+    def is_completed(onboarding):
+
+        return onboarding.progress >= 100
+
+
+
+
 

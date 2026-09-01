@@ -452,6 +452,7 @@ class JobApplicationStatusSerializer(serializers.ModelSerializer):
 
         return value
 
+
 class PhoneAPISerializer(serializers.Serializer):
     phone_number = serializers.CharField(max_length=11)
 
@@ -492,6 +493,7 @@ class ResetPasswordAPISerializer(serializers.Serializer):
         write_only=True,
         min_length=6,
     )
+
 
 class GamiTokenObtainPairSerializer(
     TokenObtainPairSerializer
@@ -585,6 +587,7 @@ class UserAdminSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
+
 
 class BadgeRuleSerializer(serializers.ModelSerializer):
 
@@ -703,6 +706,7 @@ class AssignBadgeSerializer(serializers.Serializer):
         default="Assigned manually by admin",
     )
 
+
 class TeamSerializer(serializers.ModelSerializer):
 
     members = serializers.SerializerMethodField()
@@ -743,6 +747,7 @@ class TeamSerializer(serializers.ModelSerializer):
             ],
             many=True,
         ).data
+
 
 class OnboardingChecklistItemSerializer(
     serializers.ModelSerializer
@@ -837,6 +842,8 @@ class OnboardingSerializer(
 
     checklist = serializers.SerializerMethodField()
 
+    badges = serializers.SerializerMethodField()
+
     class Meta:
         model = Onboarding
 
@@ -849,6 +856,7 @@ class OnboardingSerializer(
             "hr_progress",
             "progress",
             "checklist",
+            "badges",
             "created_at",
             "updated_at",
         )
@@ -861,6 +869,7 @@ class OnboardingSerializer(
             "checklist_progress",
             "progress",
             "checklist",
+            "badges",
             "created_at",
             "updated_at",
         )
@@ -871,5 +880,95 @@ class OnboardingSerializer(
             obj.checklist_progress_items.all(),
             many=True,
         ).data
+
+    def get_badges(self, obj):
+
+        user_badges = (
+            obj.user.badges
+            .select_related("badge")
+            .order_by("-assigned_at")
+        )
+
+        return UserBadgeSerializer(
+            user_badges,
+            many=True,
+        ).data
+
+class OnboardingChecklistItemManagementSerializer(
+    serializers.ModelSerializer
+):
+
+    class Meta:
+        model = OnboardingChecklistItem
+
+        fields = (
+            "id",
+            "job_position",
+            "icon",
+            "points",
+            "title",
+            "type",
+            "description",
+            "order",
+            "is_active",
+            "created_at",
+            "updated_at",
+        )
+
+        read_only_fields = (
+            "id",
+            "created_at",
+            "updated_at",
+        )
+
+    def validate_title(self, value):
+
+        value = value.strip()
+
+        if not value:
+
+            raise serializers.ValidationError(
+                "عنوان نمی‌تواند خالی باشد."
+            )
+
+        return value
+
+    def validate_order(self, value):
+
+        if value < 1:
+
+            raise serializers.ValidationError(
+                "order باید بزرگ‌تر از صفر باشد."
+            )
+
+        return value
+
+class OnboardingChecklistCompleteSerializer(
+    serializers.Serializer
+):
+
+    checklist_item_id = serializers.IntegerField(
+        min_value=1
+    )
+
+class OnboardingHRProgressSerializer(
+    serializers.Serializer
+):
+
+    hr_progress = serializers.IntegerField(
+        min_value=0,
+        max_value=100,
+    )
+
+class OnboardingTeamAssignSerializer(
+    serializers.Serializer
+):
+
+    team_id = serializers.IntegerField(
+        min_value=1
+    )
+
+
+
 
 

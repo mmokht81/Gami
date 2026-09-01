@@ -78,10 +78,23 @@ from .views.onboarding import (
     MyOnboardingAPIView,
     UserOnboardingAPIView,
 )
+
+from .views.onboarding_actions import (
+    OnboardingChecklistCompleteAPIView,
+    OnboardingTeamAssignAPIView,
+    OnboardingHRProgressAPIView,
+)
+
+from .views.onboarding_checklist import (
+    OnboardingChecklistListCreateAPIView,
+    OnboardingChecklistDetailUpdateDeleteAPIView,
+)
+
 from .views.team import (
     TeamListCreateAPIView,
     TeamDetailUpdateDeleteAPIView,
 )
+
 
 urlpatterns = [
 
@@ -354,5 +367,35 @@ urlpatterns = [
         "api/teams/<int:pk>/",
         TeamDetailUpdateDeleteAPIView.as_view(),
         name="api_team_detail",
+    ),
+
+    path(
+        "api/onboarding/checklist/",
+        OnboardingChecklistListCreateAPIView.as_view(),
+        name="api_onboarding_checklist_list_create",
+    ),
+
+    path(
+        "api/onboarding/checklist/<int:pk>/",
+        OnboardingChecklistDetailUpdateDeleteAPIView.as_view(),
+        name="api_onboarding_checklist_detail",
+    ),
+
+    path(
+        "api/onboarding/checklist/complete/",
+        OnboardingChecklistCompleteAPIView.as_view(),
+        name="api_onboarding_checklist_complete",
+    ),
+
+    path(
+        "api/onboarding/users/<int:user_id>/team/",
+        OnboardingTeamAssignAPIView.as_view(),
+        name="api_onboarding_team_assign",
+    ),
+
+    path(
+        "api/onboarding/users/<int:user_id>/hr-progress/",
+        OnboardingHRProgressAPIView.as_view(),
+        name="api_onboarding_hr_progress",
     ),
 ]

@@ -11,7 +11,7 @@ from ..serializers import (
     JobApplicationStatusSerializer,
 )
 from ..permissions import IsAdminOrSuperAdmin
-
+from ..services import OnboardingService
 
 class JobApplicationListAPIView(generics.ListAPIView):
     """
@@ -238,7 +238,26 @@ class JobApplicationStatusUpdateAPIView(
             raise_exception=True
         )
 
+        old_status = application.status
+
         serializer.save()
+
+        application.refresh_from_db()
+
+        # --------------------------------------------------
+        # Create onboarding automatically
+        # when application becomes ACCEPTED
+        # and user is Level 1.
+        # --------------------------------------------------
+
+        if (
+            application.status == "ACCEPTED"
+            and old_status != "ACCEPTED"
+        ):
+
+            OnboardingService.ensure_for_level_one_user(
+                application.user
+            )
 
         return_serializer = (
             JobApplicationAdminSerializer(
@@ -249,4 +268,5 @@ class JobApplicationStatusUpdateAPIView(
         return Response(
             return_serializer.data
         )
+
 
