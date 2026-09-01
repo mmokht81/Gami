@@ -47,6 +47,37 @@ MISSION_STATUS = (
     ("COMPLETED", "Completed"),
 )
 
+# Team
+class Team(models.Model):
+
+    name = models.CharField(
+        max_length=255,
+        unique=True,
+    )
+
+    description = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
 
 # User
 class User(AbstractBaseUser, PermissionsMixin):
@@ -84,6 +115,14 @@ class User(AbstractBaseUser, PermissionsMixin):
         max_length=20,
         choices=STATUS_CHOICES,
         default="جویای کار",
+    )
+
+    team = models.ForeignKey(
+        "Team",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="members",
     )
 
     is_phone_verified = models.BooleanField(
@@ -178,6 +217,179 @@ class JobPosition(models.Model):
 
     def __str__(self):
         return self.title
+
+
+# Onboarding Checklist Item
+class OnboardingChecklistItem(models.Model):
+
+    CHECKLIST_TYPE_CHOICES = (
+        ("DOCUMENT", "Document"),
+        ("TRAINING", "Training"),
+        ("TASK", "Task"),
+        ("MEETING", "Meeting"),
+        ("PROFILE", "Profile"),
+        ("OTHER", "Other"),
+    )
+
+    job_position = models.ForeignKey(
+        JobPosition,
+        on_delete=models.CASCADE,
+        related_name="onboarding_checklist",
+    )
+
+    icon = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+    )
+
+    points = models.PositiveIntegerField(
+        default=0,
+    )
+
+    title = models.CharField(
+        max_length=255,
+    )
+
+    type = models.CharField(
+        max_length=20,
+        choices=CHECKLIST_TYPE_CHOICES,
+        default="TASK",
+    )
+
+    description = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    order = models.PositiveIntegerField(
+        default=1,
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return self.title
+
+
+# Onboarding
+class Onboarding(models.Model):
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="onboarding",
+    )
+
+    job_position = models.ForeignKey(
+        JobPosition,
+        on_delete=models.PROTECT,
+        related_name="onboardings",
+    )
+
+    hr_progress = models.PositiveSmallIntegerField(
+        default=0,
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(100),
+        ],
+    )
+
+    checklist_progress = models.PositiveSmallIntegerField(
+        default=0,
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(100),
+        ],
+    )
+
+    progress = models.PositiveSmallIntegerField(
+        default=0,
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(100),
+        ],
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    def calculate_progress(self):
+        self.progress = round(
+            (
+                self.checklist_progress * 70
+                + self.hr_progress * 30
+            ) / 100
+        )
+
+        return self.progress
+
+    def save(self, *args, **kwargs):
+        self.calculate_progress()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Onboarding - {self.user}"
+
+
+# Onboarding Checklist Progress
+class OnboardingChecklistProgress(models.Model):
+
+    onboarding = models.ForeignKey(
+        Onboarding,
+        on_delete=models.CASCADE,
+        related_name="checklist_progress_items",
+    )
+
+    checklist_item = models.ForeignKey(
+        OnboardingChecklistItem,
+        on_delete=models.CASCADE,
+        related_name="user_progress",
+    )
+
+    is_completed = models.BooleanField(
+        default=False,
+    )
+
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "onboarding",
+                    "checklist_item",
+                ],
+                name="unique_onboarding_checklist_item",
+            )
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.onboarding.user} - "
+            f"{self.checklist_item.title}"
+        )
 
 
 # Mission

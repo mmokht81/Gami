@@ -3,11 +3,11 @@ from .models import OTP, User
 from django.db import transaction
 from django.db.models import F
 from .models import (
+    Onboarding,
+    OnboardingChecklistItem,
+    OnboardingChecklistProgress,
+    JobPosition,
     User,
-    # Mission,
-    UserMission,
-    Badge,
-    UserBadge,
 )
 class OTPService:
     OTP_LENGTH = 6
@@ -164,3 +164,122 @@ class BadgeService:
                         user=user,
                         badge=badge,
                     )
+
+class OnboardingService:
+
+    @staticmethod
+    @transaction.atomic
+    def create_for_user(user, job_position):
+
+        onboarding, created = Onboarding.objects.get_or_create(
+            user=user,
+            defaults={
+                "job_position": job_position,
+            },
+        )
+
+        if not created and onboarding.job_position_id != job_position.id:
+            onboarding.job_position = job_position
+            onboarding.save()
+
+        checklist_items = (
+            OnboardingChecklistItem.objects
+            .filter(
+                job_position=job_position,
+                is_active=True,
+            )
+            .order_by("order", "id")
+        )
+
+        for item in checklist_items:
+
+            OnboardingChecklistProgress.objects.get_or_create(
+                onboarding=onboarding,
+                checklist_item=item,
+            )
+
+        OnboardingService.update_checklist_progress(
+            onboarding
+        )
+
+        return onboarding
+
+    @staticmethod
+    def update_checklist_progress(onboarding):
+
+        items = (
+            onboarding.checklist_progress_items
+            .filter(
+                checklist_item__is_active=True,
+            )
+        )
+
+        total = items.count()
+
+        if total == 0:
+            onboarding.checklist_progress = 0
+        else:
+            completed = items.filter(
+                is_completed=True
+            ).count()
+
+            onboarding.checklist_progress = round(
+                completed * 100 / total
+            )
+
+        onboarding.save(
+            update_fields=[
+                "checklist_progress",
+                "progress",
+                "updated_at",
+            ]
+        )
+
+        return onboarding
+
+    @staticmethod
+    def complete_checklist_item(
+        onboarding,
+        checklist_item,
+    ):
+
+        progress = (
+            OnboardingChecklistProgress.objects.get(
+                onboarding=onboarding,
+                checklist_item=checklist_item,
+            )
+        )
+
+        progress.is_completed = True
+        progress.completed_at = timezone.now()
+        progress.save(
+            update_fields=[
+                "is_completed",
+                "completed_at",
+            ]
+        )
+
+        return OnboardingService.update_checklist_progress(
+            onboarding
+        )
+
+    @staticmethod
+    def set_hr_progress(onboarding, value):
+
+        if not 0 <= value <= 100:
+            raise ValueError(
+                "HR progress must be between 0 and 100."
+            )
+
+        onboarding.hr_progress = value
+
+        onboarding.save(
+            update_fields=[
+                "hr_progress",
+                "progress",
+                "updated_at",
+            ]
+        )
+
+        return onboarding
+

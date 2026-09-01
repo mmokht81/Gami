@@ -1445,6 +1445,7 @@ class ApplicationTests(APITestCase):
                 status,
             )
 
+
 class JobApplicationValidationTests(APITestCase):
 
     def setUp(self):

@@ -74,6 +74,10 @@ from .views.badge import (
     UserBadgesAPIView,
     AssignBadgeAPIView,
 )
+from .views.onboarding import (
+    MyOnboardingAPIView,
+    UserOnboardingAPIView,
+)
 
 urlpatterns = [
 
@@ -322,5 +326,17 @@ urlpatterns = [
         "api/badges/<int:pk>/",
         BadgeDetailAPIView.as_view(),
         name="api_badge_detail",
+    ),
+
+    path(
+        "api/onboarding/",
+        MyOnboardingAPIView.as_view(),
+        name="api_my_onboarding",
+    ),
+
+    path(
+        "api/onboarding/users/<int:user_id>/",
+        UserOnboardingAPIView.as_view(),
+        name="api_user_onboarding",
     ),
 ]
