@@ -78,21 +78,29 @@ from .views.onboarding import (
     MyOnboardingAPIView,
     UserOnboardingAPIView,
 )
-
 from .views.onboarding_actions import (
     OnboardingChecklistCompleteAPIView,
     OnboardingTeamAssignAPIView,
     OnboardingHRProgressAPIView,
 )
-
 from .views.onboarding_checklist import (
     OnboardingChecklistListCreateAPIView,
     OnboardingChecklistDetailUpdateDeleteAPIView,
 )
-
 from .views.team import (
     TeamListCreateAPIView,
     TeamDetailUpdateDeleteAPIView,
+)
+from .views.challenge import (
+    ChallengeListAPIView,
+    ChallengeDetailAPIView,
+    ChallengeManagementListAPIView,
+    ChallengeManagementDetailAPIView,
+    ChallengeRegisterAPIView,
+    ChallengeCancelAPIView,
+    ChallengeParticipantsAPIView,
+    ChallengeWinnersAPIView,
+    ChallengeAddWinnerAPIView,
 )
 
 
@@ -397,5 +405,59 @@ urlpatterns = [
         "api/onboarding/users/<int:user_id>/hr-progress/",
         OnboardingHRProgressAPIView.as_view(),
         name="api_onboarding_hr_progress",
+    ),
+
+    path(
+        "api/challenges/",
+        ChallengeListAPIView.as_view(),
+        name="challenge-list",
+    ),
+
+    path(
+        "api/challenges/<int:pk>/",
+        ChallengeDetailAPIView.as_view(),
+        name="challenge-detail",
+    ),
+
+    path(
+        "api/challenges/manage/",
+        ChallengeManagementListAPIView.as_view(),
+        name="challenge-management-list",
+    ),
+
+    path(
+        "api/challenges/manage/<int:pk>/",
+        ChallengeManagementDetailAPIView.as_view(),
+        name="challenge-management-detail",
+    ),
+
+    path(
+        "api/challenges/<int:pk>/register/",
+        ChallengeRegisterAPIView.as_view(),
+        name="challenge-register",
+    ),
+
+    path(
+        "api/challenges/<int:pk>/cancel/",
+        ChallengeCancelAPIView.as_view(),
+        name="challenge-cancel",
+    ),
+
+    path(
+        "api/challenges/<int:pk>/participants/",
+        ChallengeParticipantsAPIView.as_view(),
+        name="challenge-participants",
+    ),
+
+    path(
+        "api/challenges/<int:pk>/winners/",
+        ChallengeWinnersAPIView.as_view(),
+        name="challenge-winners",
+    ),
+
+    path(
+        "api/challenges/<int:pk>/winners/add/",
+        ChallengeAddWinnerAPIView.as_view(),
+        name="challenge-add-winner",
     ),
 ]

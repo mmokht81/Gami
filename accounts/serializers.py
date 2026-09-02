@@ -1,5 +1,9 @@
 from rest_framework import serializers
-from .models import JobApplication
+from drf_spectacular.utils import extend_schema_field
+from rest_framework_simplejwt.serializers import (
+    TokenObtainPairSerializer,
+)
+
 from .models import (
     User,
     Mission,
@@ -15,20 +19,21 @@ from .models import (
     Onboarding,
     OnboardingChecklistItem,
     OnboardingChecklistProgress,
-)
-from rest_framework_simplejwt.serializers import (
-    TokenObtainPairSerializer
+    Challenge,
+    ChallengeParticipant,
+    ChallengeWinner,
 )
 
+
+# ============================================================
+# User
+# ============================================================
 
 class UserSerializer(serializers.ModelSerializer):
 
-    # team = serializers.PrimaryKeyRelatedField(
-    #     read_only=True
-    # )
-    
     class Meta:
         model = User
+
         fields = (
             "id",
             "phone_number",
@@ -41,6 +46,7 @@ class UserSerializer(serializers.ModelSerializer):
             "status",
             "is_phone_verified",
         )
+
         read_only_fields = (
             "id",
             "phone_number",
@@ -50,12 +56,15 @@ class UserSerializer(serializers.ModelSerializer):
             "is_phone_verified",
         )
 
+
 class LeaderboardSerializer(serializers.ModelSerializer):
+
     full_name = serializers.ReadOnlyField()
     rank = serializers.SerializerMethodField()
 
     class Meta:
         model = User
+
         fields = (
             "rank",
             "full_name",
@@ -84,24 +93,38 @@ class LeaderboardSerializer(serializers.ModelSerializer):
 
         return ids.index(obj.id) + 1
 
+
 class ProfileUpdateSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = User
+
         fields = (
             "first_name",
             "last_name",
         )
 
+
+# ============================================================
+# Mission
+# ============================================================
+
 class MissionSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Mission
         fields = "__all__"
 
+
 class UserMissionSerializer(serializers.ModelSerializer):
-    mission = MissionSerializer(read_only=True)
+
+    mission = MissionSerializer(
+        read_only=True
+    )
 
     class Meta:
         model = UserMission
+
         fields = (
             "id",
             "mission",
@@ -111,21 +134,30 @@ class UserMissionSerializer(serializers.ModelSerializer):
             "updated_at",
         )
 
+
 class AssignMissionSerializer(serializers.Serializer):
+
     user_id = serializers.IntegerField()
 
     def validate_user_id(self, value):
+
         try:
             user = User.objects.get(
                 id=value,
                 is_active=True,
             )
+
         except User.DoesNotExist:
             raise serializers.ValidationError(
                 "کاربر مورد نظر پیدا نشد."
             )
 
         return user
+
+
+# ============================================================
+# Job Position
+# ============================================================
 
 class JobPositionSerializer(serializers.ModelSerializer):
 
@@ -156,6 +188,11 @@ class JobPositionSerializer(serializers.ModelSerializer):
             tag.strip()
             for tag in value
         ]
+
+
+# ============================================================
+# Questions
+# ============================================================
 
 class QuestionSerializer(serializers.ModelSerializer):
 
@@ -193,6 +230,11 @@ class QuestionSerializer(serializers.ModelSerializer):
 
         return value.strip()
 
+
+# ============================================================
+# Job Application
+# ============================================================
+
 class ApplicationAnswerInputSerializer(serializers.Serializer):
     """
     Validates a single answer submitted for a job application.
@@ -213,6 +255,7 @@ class ApplicationAnswerInputSerializer(serializers.Serializer):
         allow_blank=False,
         trim_whitespace=True,
     )
+
 
 class JobApplicationSerializer(serializers.ModelSerializer):
 
@@ -279,10 +322,7 @@ class JobApplicationSerializer(serializers.ModelSerializer):
             for item in value
         ]
 
-        # --------------------------------------------------
-        # 1. Prevent duplicate answers
-        # --------------------------------------------------
-
+        # Prevent duplicate answers
         if len(question_ids) != len(set(question_ids)):
 
             raise serializers.ValidationError(
@@ -309,10 +349,7 @@ class JobApplicationSerializer(serializers.ModelSerializer):
             for item in answers
         ]
 
-        # --------------------------------------------------
-        # 2. Get all active questions belonging to this job
-        # --------------------------------------------------
-
+        # Get all active questions belonging to this job
         job_questions = Question.objects.filter(
             job_position=job_position,
             is_active=True,
@@ -329,10 +366,7 @@ class JobApplicationSerializer(serializers.ModelSerializer):
             question_ids
         )
 
-        # --------------------------------------------------
-        # 3. Reject questions that don't belong to job
-        # --------------------------------------------------
-
+        # Reject questions that don't belong to job
         invalid_question_ids = (
             submitted_question_ids
             - valid_question_ids
@@ -351,10 +385,7 @@ class JobApplicationSerializer(serializers.ModelSerializer):
                 )
             })
 
-        # --------------------------------------------------
-        # 4. Make sure all active questions are answered
-        # --------------------------------------------------
-
+        # Make sure all active questions are answered
         missing_question_ids = (
             valid_question_ids
             - submitted_question_ids
@@ -373,10 +404,7 @@ class JobApplicationSerializer(serializers.ModelSerializer):
                 )
             })
 
-        # --------------------------------------------------
-        # 5. Normalize and snapshot question information
-        # --------------------------------------------------
-
+        # Normalize and snapshot question information
         question_map = {
             question.id: question
             for question in job_questions
@@ -400,9 +428,12 @@ class JobApplicationSerializer(serializers.ModelSerializer):
 
         return attrs
 
+
 class JobApplicationAdminSerializer(serializers.ModelSerializer):
 
-    user = UserSerializer(read_only=True)
+    user = UserSerializer(
+        read_only=True
+    )
 
     job_position = JobPositionSerializer(
         read_only=True
@@ -429,6 +460,7 @@ class JobApplicationAdminSerializer(serializers.ModelSerializer):
 
         read_only_fields = fields
 
+
 class JobApplicationStatusSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -446,6 +478,7 @@ class JobApplicationStatusSerializer(serializers.ModelSerializer):
         }
 
         if value not in valid_statuses:
+
             raise serializers.ValidationError(
                 "وضعیت انتخاب‌شده معتبر نیست."
             )
@@ -453,10 +486,19 @@ class JobApplicationStatusSerializer(serializers.ModelSerializer):
         return value
 
 
+# ============================================================
+# Authentication
+# ============================================================
+
 class PhoneAPISerializer(serializers.Serializer):
-    phone_number = serializers.CharField(max_length=11)
+
+    phone_number = serializers.CharField(
+        max_length=11
+    )
+
 
 class RegisterAPISerializer(serializers.ModelSerializer):
+    
     password = serializers.CharField(
         write_only=True,
         min_length=6,
@@ -464,30 +506,44 @@ class RegisterAPISerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
+
         fields = (
             "phone_number",
             "password",
         )
 
     def create(self, validated_data):
+
         return User.objects.create_user(
             phone_number=validated_data["phone_number"],
             password=validated_data["password"],
         )
 
+
 class VerifyOTPAPISerializer(serializers.Serializer):
-    phone_number = serializers.CharField(max_length=11)
+
+    phone_number = serializers.CharField(
+        max_length=11
+    )
 
     code = serializers.CharField(
         max_length=6,
         min_length=6,
     )
 
+
 class ForgotPasswordAPISerializer(serializers.Serializer):
-    phone_number = serializers.CharField(max_length=11)
+
+    phone_number = serializers.CharField(
+        max_length=11
+    )
+
 
 class ResetPasswordAPISerializer(serializers.Serializer):
-    phone_number = serializers.CharField(max_length=11)
+
+    phone_number = serializers.CharField(
+        max_length=11
+    )
 
     password = serializers.CharField(
         write_only=True,
@@ -504,12 +560,18 @@ class GamiTokenObtainPairSerializer(
         data = super().validate(attrs)
 
         if not self.user.is_active:
+
             raise serializers.ValidationError(
                 "حساب کاربری شما غیرفعال شده است. "
                 "لطفاً با واحد HR تماس بگیرید."
             )
 
         return data
+
+
+# ============================================================
+# User Admin
+# ============================================================
 
 class UserAdminSerializer(serializers.ModelSerializer):
 
@@ -561,12 +623,12 @@ class UserAdminSerializer(serializers.ModelSerializer):
 
         password = validated_data.pop(
             "password",
-            None
+            None,
         )
 
         user = User.objects.create_user(
             password=password,
-            **validated_data
+            **validated_data,
         )
 
         return user
@@ -575,7 +637,7 @@ class UserAdminSerializer(serializers.ModelSerializer):
 
         password = validated_data.pop(
             "password",
-            None
+            None,
         )
 
         for attr, value in validated_data.items():
@@ -588,6 +650,10 @@ class UserAdminSerializer(serializers.ModelSerializer):
 
         return instance
 
+
+# ============================================================
+# Badge
+# ============================================================
 
 class BadgeRuleSerializer(serializers.ModelSerializer):
 
@@ -608,13 +674,16 @@ class BadgeRuleSerializer(serializers.ModelSerializer):
     def validate_value(self, value):
 
         if value <= 0:
+
             raise serializers.ValidationError(
                 "value باید بزرگ‌تر از صفر باشد."
             )
 
         return value
 
+
 class BadgeSerializer(serializers.ModelSerializer):
+
     rule = BadgeRuleSerializer(
         required=False
     )
@@ -637,9 +706,10 @@ class BadgeSerializer(serializers.ModelSerializer):
         )
 
     def create(self, validated_data):
+
         rule_data = validated_data.pop(
             "rule",
-            None
+            None,
         )
 
         badge = Badge.objects.create(
@@ -647,17 +717,19 @@ class BadgeSerializer(serializers.ModelSerializer):
         )
 
         if rule_data:
+
             BadgeRule.objects.create(
                 badge=badge,
-                **rule_data
+                **rule_data,
             )
 
         return badge
 
     def update(self, instance, validated_data):
+
         rule_data = validated_data.pop(
             "rule",
-            None
+            None,
         )
 
         for attr, value in validated_data.items():
@@ -666,6 +738,7 @@ class BadgeSerializer(serializers.ModelSerializer):
         instance.save()
 
         if rule_data is not None:
+
             rule, created = BadgeRule.objects.get_or_create(
                 badge=instance
             )
@@ -677,7 +750,9 @@ class BadgeSerializer(serializers.ModelSerializer):
 
         return instance
 
+
 class UserBadgeSerializer(serializers.ModelSerializer):
+
     badge = BadgeSerializer(
         read_only=True
     )
@@ -699,13 +774,19 @@ class UserBadgeSerializer(serializers.ModelSerializer):
             "assigned_at",
         )
 
+
 class AssignBadgeSerializer(serializers.Serializer):
+
     reason = serializers.CharField(
         required=False,
         allow_blank=True,
         default="Assigned manually by admin",
     )
 
+
+# ============================================================
+# Team
+# ============================================================
 
 class TeamSerializer(serializers.ModelSerializer):
 
@@ -732,6 +813,7 @@ class TeamSerializer(serializers.ModelSerializer):
         )
 
     def get_members(self, obj):
+
         onboardings = (
             obj.onboardings
             .select_related("user")
@@ -748,6 +830,10 @@ class TeamSerializer(serializers.ModelSerializer):
             many=True,
         ).data
 
+
+# ============================================================
+# Onboarding
+# ============================================================
 
 class OnboardingChecklistItemSerializer(
     serializers.ModelSerializer
@@ -771,6 +857,7 @@ class OnboardingChecklistItemSerializer(
             "id",
         )
 
+
 class OnboardingChecklistProgressSerializer(
     serializers.ModelSerializer
 ):
@@ -793,6 +880,7 @@ class OnboardingChecklistProgressSerializer(
             "id",
             "completed_at",
         )
+
 
 class OnboardingTeamSerializer(
     serializers.ModelSerializer
@@ -827,6 +915,7 @@ class OnboardingTeamSerializer(
             ],
             many=True,
         ).data
+
 
 class OnboardingSerializer(
     serializers.ModelSerializer
@@ -894,6 +983,7 @@ class OnboardingSerializer(
             many=True,
         ).data
 
+
 class OnboardingChecklistItemManagementSerializer(
     serializers.ModelSerializer
 ):
@@ -943,6 +1033,7 @@ class OnboardingChecklistItemManagementSerializer(
 
         return value
 
+
 class OnboardingChecklistCompleteSerializer(
     serializers.Serializer
 ):
@@ -950,6 +1041,7 @@ class OnboardingChecklistCompleteSerializer(
     checklist_item_id = serializers.IntegerField(
         min_value=1
     )
+
 
 class OnboardingHRProgressSerializer(
     serializers.Serializer
@@ -960,6 +1052,7 @@ class OnboardingHRProgressSerializer(
         max_value=100,
     )
 
+
 class OnboardingTeamAssignSerializer(
     serializers.Serializer
 ):
@@ -969,6 +1062,231 @@ class OnboardingTeamAssignSerializer(
     )
 
 
+# ============================================================
+# Challenge / Competition
+# ============================================================
+
+class ChallengeSerializer(serializers.ModelSerializer):
+
+    participants_count = serializers.SerializerMethodField()
+
+    winners = serializers.SerializerMethodField()
+
+    status = serializers.CharField(
+        read_only=True,
+    )
+
+    class Meta:
+        model = Challenge
+
+        fields = (
+            "id",
+            "name",
+            "description",
+            "tags",
+            "start_time",
+            "end_time",
+            "requirements",
+            "points",
+            "type",
+            "event_link",
+            "is_active",
+            "status",
+            "participants_count",
+            "winners",
+            "created_at",
+            "updated_at",
+        )
+
+        read_only_fields = (
+            "id",
+            "status",
+            "participants_count",
+            "created_at",
+            "updated_at",
+        )
+
+    @extend_schema_field(
+        serializers.IntegerField()
+    )
+    def get_participants_count(self, obj):
+
+        return obj.participants.filter(
+            is_cancelled=False
+        ).count()
+
+    def get_winners(self, obj):
+
+        return ChallengeWinnerSerializer(
+            obj.winners.select_related("user").all(),
+            many=True,
+        ).data
+
+    def validate_tags(self, value):
+
+        if not isinstance(value, list):
+
+            raise serializers.ValidationError(
+                "tags باید یک آرایه باشد."
+            )
+
+        for tag in value:
+
+            if not isinstance(tag, str):
+
+                raise serializers.ValidationError(
+                    "تمام tag ها باید از نوع string باشند."
+                )
+
+            if not tag.strip():
+
+                raise serializers.ValidationError(
+                    "tag نمی‌تواند خالی باشد."
+                )
+
+        return [
+            tag.strip()
+            for tag in value
+        ]
+
+    def validate_requirements(self, value):
+
+        if not isinstance(value, list):
+
+            raise serializers.ValidationError(
+                "requirements باید یک آرایه باشد."
+            )
+
+        for requirement in value:
+
+            if not isinstance(requirement, str):
+
+                raise serializers.ValidationError(
+                    "تمام requirements ها باید از نوع string باشند."
+                )
+
+        return value
+
+    def validate(self, attrs):
+
+        start_time = attrs.get(
+            "start_time",
+            getattr(
+                self.instance,
+                "start_time",
+                None,
+            ),
+        )
+
+        end_time = attrs.get(
+            "end_time",
+            getattr(
+                self.instance,
+                "end_time",
+                None,
+            ),
+        )
+
+        if (
+            start_time
+            and end_time
+            and end_time <= start_time
+        ):
+
+            raise serializers.ValidationError({
+                "end_time": (
+                    "زمان اتمام باید بعد از زمان شروع باشد."
+                )
+            })
+
+        return attrs
 
 
+class ChallengeParticipantSerializer(
+    serializers.ModelSerializer
+):
 
+    user = UserSerializer(
+        read_only=True
+    )
+
+    challenge = serializers.PrimaryKeyRelatedField(
+        read_only=True
+    )
+
+    class Meta:
+        model = ChallengeParticipant
+
+        fields = (
+            "id",
+            "challenge",
+            "user",
+            "registered_at",
+            "is_cancelled",
+            "cancelled_at",
+        )
+
+        read_only_fields = fields
+
+
+class ChallengeWinnerSerializer(
+    serializers.ModelSerializer
+):
+
+    user = UserSerializer(
+        read_only=True
+    )
+
+    class Meta:
+        model = ChallengeWinner
+
+        fields = (
+            "id",
+            "challenge",
+            "user",
+            "rank",
+            "points",
+            "prize",
+            "created_at",
+        )
+
+        read_only_fields = (
+            "id",
+            "created_at",
+        )
+
+
+class ChallengeRegisterSerializer(
+    serializers.Serializer
+):
+
+    challenge_id = serializers.IntegerField(
+        min_value=1
+    )
+
+
+class ChallengeWinnerInputSerializer(
+    serializers.Serializer
+):
+
+    user_id = serializers.IntegerField(
+        min_value=1
+    )
+
+    rank = serializers.IntegerField(
+        min_value=1,
+        required=False,
+        allow_null=True,
+    )
+
+    points = serializers.IntegerField(
+        min_value=0,
+        required=False,
+        allow_null=True,
+    )
+
+    prize = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+    )

@@ -46,6 +46,17 @@ MISSION_STATUS = (
     ("IN_PROGRESS", "In Progress"),
     ("COMPLETED", "Completed"),
 )
+CHALLENGE_TYPE_CHOICES = (
+    ("CHALLENGE", "Challenge"),
+    ("COMPETITION", "Competition"),
+)
+CHALLENGE_STATUS_CHOICES = (
+    ("UPCOMING", "Upcoming"),
+    ("ACTIVE", "Active"),
+    ("FINISHED", "Finished"),
+    ("CANCELLED", "Cancelled"),
+)
+
 
 # Team
 class Team(models.Model):
@@ -651,3 +662,196 @@ class Level(models.Model):
 
     def __str__(self):
         return f"Level {self.level}"
+
+
+# Challenge / Competition
+class Challenge(models.Model):
+
+    name = models.CharField(
+        max_length=255,
+    )
+
+    description = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    tags = models.JSONField(
+        default=list,
+        blank=True,
+    )
+
+    start_time = models.DateTimeField()
+
+    end_time = models.DateTimeField()
+
+    requirements = models.JSONField(
+        default=list,
+        blank=True,
+    )
+
+    points = models.PositiveIntegerField(
+        default=0,
+    )
+
+    type = models.CharField(
+        max_length=20,
+        choices=CHALLENGE_TYPE_CHOICES,
+        default="CHALLENGE",
+    )
+
+    event_link = models.URLField(
+        blank=True,
+        default="",
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=CHALLENGE_STATUS_CHOICES,
+        default="UPCOMING",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = ["-start_time"]
+
+    @property
+    def participants_count(self):
+        return self.participants.filter(
+            is_cancelled=False
+        ).count()
+
+    def update_status(self):
+        now = timezone.now()
+
+        if self.status == "CANCELLED":
+            return self.status
+
+        if now >= self.end_time:
+            self.status = "FINISHED"
+
+        elif now >= self.start_time:
+            self.status = "ACTIVE"
+
+        else:
+            self.status = "UPCOMING"
+
+        return self.status
+
+    def save(self, *args, **kwargs):
+        self.update_status()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
+class ChallengeParticipant(models.Model):
+
+    challenge = models.ForeignKey(
+        Challenge,
+        on_delete=models.CASCADE,
+        related_name="participants",
+    )
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="challenge_participations",
+    )
+
+    registered_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    is_cancelled = models.BooleanField(
+        default=False,
+    )
+
+    cancelled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "challenge",
+                    "user",
+                ],
+                name="unique_challenge_participant",
+            )
+        ]
+        ordering = ["registered_at"]
+
+    def __str__(self):
+        return (
+            f"{self.user.phone_number} - "
+            f"{self.challenge.name}"
+        )
+
+
+class ChallengeWinner(models.Model):
+
+    challenge = models.ForeignKey(
+        Challenge,
+        on_delete=models.CASCADE,
+        related_name="winners",
+    )
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="challenge_wins",
+    )
+
+    rank = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
+
+    points = models.PositiveIntegerField(
+        default=0,
+    )
+
+    prize = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "challenge",
+                    "user",
+                ],
+                name="unique_challenge_winner",
+            )
+        ]
+        ordering = ["rank", "id"]
+
+    def __str__(self):
+        return (
+            f"{self.challenge.name} - "
+            f"{self.user.phone_number}"
+        )
+
+
