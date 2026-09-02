@@ -76,100 +76,6 @@ class UserOnboardingAPIView(
         )
 
 
-class OnboardingChecklistCompleteAPIView(
-    generics.GenericAPIView
-):
-
-    serializer_class = (
-        OnboardingChecklistCompleteSerializer
-    )
-
-    permission_classes = [
-        IsAuthenticated
-    ]
-
-    def post(self, request):
-
-        serializer = self.get_serializer(
-            data=request.data
-        )
-
-        serializer.is_valid(
-            raise_exception=True
-        )
-
-        checklist_item_id = serializer.validated_data[
-            "checklist_item_id"
-        ]
-
-        try:
-            onboarding = (
-                Onboarding.objects
-                .select_related(
-                    "user",
-                    "job_position",
-                    "team",
-                )
-                .get(
-                    user=request.user
-                )
-            )
-        except Onboarding.DoesNotExist:
-            return Response(
-                {
-                    "detail": (
-                        "Onboarding برای این کاربر "
-                        "وجود ندارد."
-                    )
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        try:
-            checklist_item = (
-                OnboardingChecklistItem.objects.get(
-                    id=checklist_item_id,
-                    is_active=True,
-                )
-            )
-        except OnboardingChecklistItem.DoesNotExist:
-            return Response(
-                {
-                    "detail": (
-                        "Checklist item پیدا نشد."
-                    )
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        if (
-            checklist_item.job_position_id
-            != onboarding.job_position_id
-        ):
-            return Response(
-                {
-                    "detail": (
-                        "این Checklist مربوط به "
-                        "موقعیت شغلی شما نیست."
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        OnboardingService.complete_checklist_item(
-            onboarding=onboarding,
-            checklist_item=checklist_item,
-        )
-
-        onboarding.refresh_from_db()
-
-        return Response(
-            OnboardingSerializer(
-                onboarding
-            ).data
-        )
-
-
 class OnboardingTeamAssignAPIView(
     generics.GenericAPIView
 ):
@@ -299,7 +205,4 @@ class OnboardingHRProgressAPIView(
                 onboarding
             ).data
         )
-
-
-
 
