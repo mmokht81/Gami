@@ -689,5 +689,3 @@ class ChallengeService:
 
         return winner
 
-
-
