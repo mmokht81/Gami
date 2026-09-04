@@ -17,9 +17,14 @@ from .models import (
     JobPosition,
     Question,
     JobApplication,
+    TrainingCourse,
+    TrainingSection,
+    UserTraining,
+    UserTrainingSection,
 )
 
 from .serializers import JobApplicationSerializer
+from .training_service import TrainingService
 
 class MissionServiceTests(TestCase):
 
@@ -1905,4 +1910,836 @@ class JobApplicationValidationTests(APITestCase):
             "answers",
             serializer.errors,
         )
+
+
+class TrainingServiceTests(TestCase):
+
+    def setUp(self):
+
+        Level.objects.create(
+            level=1,
+            required_points=0,
+            is_active=True,
+        )
+
+        Level.objects.create(
+            level=2,
+            required_points=100,
+            is_active=True,
+        )
+
+        Level.objects.create(
+            level=3,
+            required_points=200,
+            is_active=True,
+        )
+
+        Level.objects.create(
+            level=4,
+            required_points=300,
+            is_active=True,
+        )
+
+        self.user = User.objects.create_user(
+            phone_number="09123333333",
+            password="testpassword123",
+        )
+
+        self.course = TrainingCourse.objects.create(
+            delivery_type="ONLINE",
+            structure="MULTI",
+            name="Python Basics",
+            description="Python training course",
+            instructor_name="Test Instructor",
+            duration="2 hours",
+            sessions_count=2,
+            points=50,
+            event_link="https://example.com/python",
+            capacity=10,
+            is_active=True,
+        )
+
+        self.section_1 = TrainingSection.objects.create(
+            course=self.course,
+            title="Introduction",
+            description="Introduction to Python",
+            content_url="https://example.com/part-1",
+            order=1,
+        )
+
+        self.section_2 = TrainingSection.objects.create(
+            course=self.course,
+            title="Variables",
+            description="Python variables",
+            content_url="https://example.com/part-2",
+            order=2,
+        )
+
+    def test_user_can_enroll_in_training(self):
+
+        user_training, created = TrainingService.enroll_user(
+            user=self.user,
+            course=self.course,
+        )
+
+        self.assertTrue(
+            created
+        )
+
+        self.assertEqual(
+            user_training.user,
+            self.user,
+        )
+
+        self.assertEqual(
+            user_training.course,
+            self.course,
+        )
+
+        self.assertEqual(
+            user_training.progress,
+            0,
+        )
+
+        self.assertEqual(
+            user_training.status,
+            "ENROLLED",
+        )
+
+    def test_user_cannot_enroll_twice(self):
+
+        TrainingService.enroll_user(
+            user=self.user,
+            course=self.course,
+        )
+
+        with self.assertRaises(Exception):
+            TrainingService.enroll_user(
+                user=self.user,
+                course=self.course,
+            )
+
+        self.assertEqual(
+            UserTraining.objects.filter(
+                user=self.user,
+                course=self.course,
+            ).count(),
+            1,
+        )
+
+    def test_user_cannot_enroll_in_inactive_course(self):
+
+        self.course.is_active = False
+        self.course.save()
+
+        with self.assertRaises(Exception):
+            TrainingService.enroll_user(
+                user=self.user,
+                course=self.course,
+            )
+
+        self.assertFalse(
+            UserTraining.objects.filter(
+                user=self.user,
+                course=self.course,
+            ).exists()
+        )
+
+    def test_user_cannot_enroll_when_course_is_full(self):
+
+        self.course.capacity = 1
+        self.course.save()
+
+        another_user = User.objects.create_user(
+            phone_number="09124444444",
+            password="testpassword123",
+        )
+
+        TrainingService.enroll_user(
+            user=self.user,
+            course=self.course,
+        )
+
+        with self.assertRaises(Exception):
+            TrainingService.enroll_user(
+                user=another_user,
+                course=self.course,
+            )
+
+    def test_start_first_section_updates_progress(self):
+
+        TrainingService.enroll_user(
+            user=self.user,
+            course=self.course,
+        )
+
+        user_training, reward, created = (
+            TrainingService.start_section(
+                user=self.user,
+                course=self.course,
+                section=self.section_1,
+            )
+        )
+
+        self.assertTrue(
+            created
+        )
+
+        self.assertEqual(
+            user_training.progress,
+            50,
+        )
+
+        self.assertEqual(
+            user_training.status,
+            "IN_PROGRESS",
+        )
+
+        self.assertIsNone(
+            reward
+        )
+
+        self.assertTrue(
+            UserTrainingSection.objects.filter(
+                user_training=user_training,
+                section=self.section_1,
+            ).exists()
+        )
+
+    def test_start_last_section_completes_training_and_awards_points(self):
+
+        TrainingService.enroll_user(
+            user=self.user,
+            course=self.course,
+        )
+
+        TrainingService.start_section(
+            user=self.user,
+            course=self.course,
+            section=self.section_1,
+        )
+
+        user_training, reward, created = (
+            TrainingService.start_section(
+                user=self.user,
+                course=self.course,
+                section=self.section_2,
+            )
+        )
+
+        self.assertTrue(
+            created
+        )
+
+        self.assertEqual(
+            user_training.progress,
+            100,
+        )
+
+        self.assertEqual(
+            user_training.status,
+            "COMPLETED",
+        )
+
+        self.assertIsNotNone(
+            user_training.completed_at
+        )
+
+        self.user.refresh_from_db()
+
+        # Initial points = 10
+        # Training points = 50
+        # Final points = 60
+
+        self.assertEqual(
+            self.user.points,
+            60,
+        )
+
+        self.assertIsNotNone(
+            reward
+        )
+
+        self.assertEqual(
+            reward["points"],
+            60,
+        )
+
+        self.assertEqual(
+            reward["badges"],
+            [],
+        )
+
+    def test_start_same_section_twice_does_not_award_duplicate_progress_or_points(self):
+
+        TrainingService.enroll_user(
+            user=self.user,
+            course=self.course,
+        )
+
+        first_training, first_reward, first_created = (
+            TrainingService.start_section(
+                user=self.user,
+                course=self.course,
+                section=self.section_1,
+            )
+        )
+
+        self.user.refresh_from_db()
+
+        points_after_first_start = self.user.points
+
+        second_training, second_reward, second_created = (
+            TrainingService.start_section(
+                user=self.user,
+                course=self.course,
+                section=self.section_1,
+            )
+        )
+
+        self.assertTrue(
+            first_created
+        )
+
+        self.assertFalse(
+            second_created
+        )
+
+        self.assertEqual(
+            second_training.progress,
+            50,
+        )
+
+        self.user.refresh_from_db()
+
+        self.assertEqual(
+            self.user.points,
+            points_after_first_start,
+        )
+
+        self.assertIsNone(
+            second_reward
+        )
+
+        self.assertEqual(
+            UserTrainingSection.objects.filter(
+                user_training=first_training,
+                section=self.section_1,
+            ).count(),
+            1,
+        )
+
+    def test_completed_training_does_not_award_points_again(self):
+
+        TrainingService.enroll_user(
+            user=self.user,
+            course=self.course,
+        )
+
+        TrainingService.start_section(
+            user=self.user,
+            course=self.course,
+            section=self.section_1,
+        )
+
+        TrainingService.start_section(
+            user=self.user,
+            course=self.course,
+            section=self.section_2,
+        )
+
+        self.user.refresh_from_db()
+
+        points_after_completion = self.user.points
+
+        user_training, reward, created = (
+            TrainingService.start_section(
+                user=self.user,
+                course=self.course,
+                section=self.section_2,
+            )
+        )
+
+        self.assertFalse(
+            created
+        )
+
+        self.assertEqual(
+            user_training.progress,
+            100,
+        )
+
+        self.assertEqual(
+            user_training.status,
+            "COMPLETED",
+        )
+
+        self.assertIsNone(
+            reward
+        )
+
+        self.user.refresh_from_db()
+
+        self.assertEqual(
+            self.user.points,
+            points_after_completion,
+        )
+
+    def test_user_cannot_start_section_without_enrollment(self):
+
+        with self.assertRaises(Exception):
+            TrainingService.start_section(
+                user=self.user,
+                course=self.course,
+                section=self.section_1,
+            )
+
+        self.assertFalse(
+            UserTrainingSection.objects.filter(
+                section=self.section_1,
+            ).exists()
+        )
+
+
+class TrainingAPITests(APITestCase):
+
+    def setUp(self):
+
+        Level.objects.create(
+            level=1,
+            required_points=0,
+            is_active=True,
+        )
+
+        Level.objects.create(
+            level=2,
+            required_points=100,
+            is_active=True,
+        )
+
+        Level.objects.create(
+            level=3,
+            required_points=200,
+            is_active=True,
+        )
+
+        Level.objects.create(
+            level=4,
+            required_points=300,
+            is_active=True,
+        )
+
+        self.user = User.objects.create_user(
+            phone_number="09125555555",
+            password="testpassword123",
+        )
+
+        self.admin = User.objects.create_user(
+            phone_number="09126666666",
+            password="testpassword123",
+            role="ADMIN",
+        )
+
+        self.course = TrainingCourse.objects.create(
+            delivery_type="ONLINE",
+            structure="MULTI",
+            name="Django Basics",
+            description="Django training course",
+            instructor_name="Test Instructor",
+            duration="3 hours",
+            sessions_count=2,
+            points=100,
+            event_link="https://example.com/django",
+            capacity=10,
+            is_active=True,
+        )
+
+        self.section_1 = TrainingSection.objects.create(
+            course=self.course,
+            title="Introduction",
+            description="Django introduction",
+            content_url="https://example.com/django-1",
+            order=1,
+        )
+
+        self.section_2 = TrainingSection.objects.create(
+            course=self.course,
+            title="Views",
+            description="Django views",
+            content_url="https://example.com/django-2",
+            order=2,
+        )
+
+        self.authenticate_user()
+
+    def authenticate_user(self):
+
+        refresh = RefreshToken.for_user(
+            self.user
+        )
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=(
+                f"Bearer {refresh.access_token}"
+            )
+        )
+
+    def authenticate_admin(self):
+
+        refresh = RefreshToken.for_user(
+            self.admin
+        )
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=(
+                f"Bearer {refresh.access_token}"
+            )
+        )
+
+    def test_user_can_list_training_courses(self):
+
+        response = self.client.get(
+            "/api/trainings/"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        results = response.data["results"]
+
+        self.assertTrue(
+            any(
+                item["id"] == self.course.id
+                for item in results
+            )
+        )
+
+    def test_user_can_view_training_detail(self):
+
+        response = self.client.get(
+            f"/api/trainings/{self.course.id}/"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            response.data["id"],
+            self.course.id,
+        )
+
+        self.assertEqual(
+            response.data["name"],
+            "Django Basics",
+        )
+
+        self.assertIn(
+            "sections",
+            response.data,
+        )
+
+        self.assertEqual(
+            len(response.data["sections"]),
+            2,
+        )
+
+    def test_user_can_enroll_in_training_api(self):
+
+        response = self.client.post(
+            f"/api/trainings/{self.course.id}/enroll/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            201,
+        )
+
+        self.assertEqual(
+            response.data["progress"],
+            0,
+        )
+
+        self.assertEqual(
+            response.data["status"],
+            "ENROLLED",
+        )
+
+        self.assertTrue(
+            UserTraining.objects.filter(
+                user=self.user,
+                course=self.course,
+            ).exists()
+        )
+
+    def test_user_cannot_enroll_twice_api(self):
+
+        self.client.post(
+            f"/api/trainings/{self.course.id}/enroll/",
+            {},
+            format="json",
+        )
+
+        response = self.client.post(
+            f"/api/trainings/{self.course.id}/enroll/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            400,
+        )
+
+        self.assertEqual(
+            UserTraining.objects.filter(
+                user=self.user,
+                course=self.course,
+            ).count(),
+            1,
+        )
+
+    def test_user_can_start_training_section_api(self):
+
+        enroll_response = self.client.post(
+            f"/api/trainings/{self.course.id}/enroll/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(
+            enroll_response.status_code,
+            201,
+        )
+
+        response = self.client.post(
+            f"/api/trainings/{self.course.id}/sections/"
+            f"{self.section_1.id}/start/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            response.data["progress"],
+            50,
+        )
+
+        self.assertEqual(
+            response.data["status"],
+            "IN_PROGRESS",
+        )
+
+    def test_completing_training_api_awards_points(self):
+
+        self.client.post(
+            f"/api/trainings/{self.course.id}/enroll/",
+            {},
+            format="json",
+        )
+
+        first_response = self.client.post(
+            f"/api/trainings/{self.course.id}/sections/"
+            f"{self.section_1.id}/start/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(
+            first_response.status_code,
+            200,
+        )
+
+        second_response = self.client.post(
+            f"/api/trainings/{self.course.id}/sections/"
+            f"{self.section_2.id}/start/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(
+            second_response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            second_response.data["progress"],
+            100,
+        )
+
+        self.assertEqual(
+            second_response.data["status"],
+            "COMPLETED",
+        )
+
+        self.assertIn(
+            "rewards",
+            second_response.data,
+        )
+
+        self.assertEqual(
+            second_response.data["rewards"]["points"],
+            110,
+        )
+
+        self.assertIsNotNone(
+            second_response.data["rewards"]["level_up"]
+        )
+
+        self.assertEqual(
+            second_response.data["rewards"]["level_up"]["from"],
+            0,
+        )
+
+        self.assertEqual(
+            second_response.data["rewards"]["level_up"]["to"],
+            2,
+        )
+
+        self.assertEqual(
+            second_response.data["rewards"]["badges"],
+            [],
+        )
+
+        self.user.refresh_from_db()
+
+        self.assertEqual(
+            self.user.points,
+            110,
+        )
+
+    def test_user_cannot_start_section_without_enrollment_api(self):
+
+        response = self.client.post(
+            f"/api/trainings/{self.course.id}/sections/"
+            f"{self.section_1.id}/start/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            400,
+        )
+
+        self.assertIn(
+            "detail",
+            response.data,
+        )
+
+    def test_unauthenticated_user_cannot_access_training_api(self):
+
+        self.client.credentials()
+
+        response = self.client.get(
+            "/api/trainings/"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            401,
+        )
+
+    def test_admin_can_create_training_course(self):
+
+        self.authenticate_admin()
+
+        data = {
+            "delivery_type": "IN_PERSON",
+            "structure": "SINGLE",
+            "name": "Advanced Django",
+            "description": "Advanced Django course",
+            "instructor_name": "Admin Instructor",
+            "duration": "4 hours",
+            "sessions_count": 1,
+            "points": 150,
+            "event_link": "",
+            "location": "Tehran Training Center",
+            "capacity": 20,
+            "is_active": True,
+        }
+
+        response = self.client.post(
+            "/api/trainings/manage/",
+            data,
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            201,
+        )
+
+        self.assertTrue(
+            TrainingCourse.objects.filter(
+                name="Advanced Django",
+            ).exists()
+        )
+
+    def test_normal_user_cannot_create_training_course(self):
+
+        data = {
+            "delivery_type": "ONLINE",
+            "structure": "SINGLE",
+            "name": "Unauthorized Course",
+            "description": "Should fail",
+            "instructor_name": "Test Instructor",
+            "duration": "1 hour",
+            "sessions_count": 1,
+            "points": 50,
+            "event_link": "https://example.com/course",
+            "location": "",
+            "capacity": 10,
+            "is_active": True,
+        }
+
+        response = self.client.post(
+            "/api/trainings/manage/",
+            data,
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
+
+    def test_admin_can_create_training_section(self):
+
+        self.authenticate_admin()
+
+        data = {
+            "title": "Advanced Views",
+            "description": "Advanced Django views",
+            "content_url": "https://example.com/advanced-views",
+            "order": 3,
+        }
+
+        response = self.client.post(
+            f"/api/trainings/manage/{self.course.id}/sections/",
+            data,
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            201,
+        )
+
+        self.assertTrue(
+            TrainingSection.objects.filter(
+                course=self.course,
+                title="Advanced Views",
+            ).exists()
+        )
+
 

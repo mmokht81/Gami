@@ -22,6 +22,10 @@ from .models import (
     Challenge,
     ChallengeParticipant,
     ChallengeWinner,
+    TrainingCourse,
+    TrainingSection,
+    UserTraining,
+    UserTrainingSection,
 )
 
 
@@ -569,10 +573,7 @@ class GamiTokenObtainPairSerializer(
         return data
 
 
-# ============================================================
 # User Admin
-# ============================================================
-
 class UserAdminSerializer(serializers.ModelSerializer):
 
     password = serializers.CharField(
@@ -651,10 +652,7 @@ class UserAdminSerializer(serializers.ModelSerializer):
         return instance
 
 
-# ============================================================
 # Badge
-# ============================================================
-
 class BadgeRuleSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -784,10 +782,7 @@ class AssignBadgeSerializer(serializers.Serializer):
     )
 
 
-# ============================================================
 # Team
-# ============================================================
-
 class TeamSerializer(serializers.ModelSerializer):
 
     members = serializers.SerializerMethodField()
@@ -831,10 +826,7 @@ class TeamSerializer(serializers.ModelSerializer):
         ).data
 
 
-# ============================================================
 # Onboarding
-# ============================================================
-
 class OnboardingChecklistItemSerializer(
     serializers.ModelSerializer
 ):
@@ -1062,10 +1054,7 @@ class OnboardingTeamAssignSerializer(
     )
 
 
-# ============================================================
 # Challenge / Competition
-# ============================================================
-
 class ChallengeSerializer(serializers.ModelSerializer):
 
     participants_count = serializers.SerializerMethodField()
@@ -1290,3 +1279,248 @@ class ChallengeWinnerInputSerializer(
         allow_blank=True,
         default="",
     )
+
+
+# Training / Education
+class TrainingSectionSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = TrainingSection
+
+        fields = (
+            "id",
+            "title",
+            "description",
+            "content_url",
+            "order",
+        )
+
+        read_only_fields = (
+            "id",
+        )
+
+    def validate_title(self, value):
+
+        if not value.strip():
+            raise serializers.ValidationError(
+                "عنوان بخش نمی‌تواند خالی باشد."
+            )
+
+        return value.strip()
+
+    def validate_order(self, value):
+
+        if value < 1:
+            raise serializers.ValidationError(
+                "order باید بزرگ‌تر از صفر باشد."
+            )
+
+        return value
+
+
+class TrainingCourseSerializer(serializers.ModelSerializer):
+
+    sections = TrainingSectionSerializer(
+        many=True,
+        read_only=True,
+    )
+
+    participants_count = serializers.IntegerField(
+        read_only=True,
+    )
+
+    is_full = serializers.BooleanField(
+        read_only=True,
+    )
+
+    class Meta:
+        model = TrainingCourse
+
+        fields = (
+            "id",
+            "delivery_type",
+            "structure",
+            "name",
+            "description",
+            "instructor_name",
+            "duration",
+            "sessions_count",
+            "points",
+            "event_link",
+            "location",
+            "capacity",
+            "participants_count",
+            "is_full",
+            "is_active",
+            "sections",
+            "created_at",
+            "updated_at",
+        )
+
+        read_only_fields = (
+            "id",
+            "participants_count",
+            "is_full",
+            "sections",
+            "created_at",
+            "updated_at",
+        )
+
+    def validate_name(self, value):
+
+        if not value.strip():
+            raise serializers.ValidationError(
+                "نام دوره نمی‌تواند خالی باشد."
+            )
+
+        return value.strip()
+
+    def validate_instructor_name(self, value):
+
+        if not value.strip():
+            raise serializers.ValidationError(
+                "نام مدرس نمی‌تواند خالی باشد."
+            )
+
+        return value.strip()
+
+    def validate_points(self, value):
+
+        if value < 0:
+            raise serializers.ValidationError(
+                "امتیاز نمی‌تواند منفی باشد."
+            )
+
+        return value
+
+    def validate_sessions_count(self, value):
+
+        if value < 1:
+            raise serializers.ValidationError(
+                "تعداد جلسات باید حداقل ۱ باشد."
+            )
+
+        return value
+
+    def validate(self, attrs):
+
+        delivery_type = attrs.get(
+            "delivery_type",
+            getattr(
+                self.instance,
+                "delivery_type",
+                None,
+            ),
+        )
+
+        event_link = attrs.get(
+            "event_link",
+            getattr(
+                self.instance,
+                "event_link",
+                "",
+            ),
+        )
+
+        location = attrs.get(
+            "location",
+            getattr(
+                self.instance,
+                "location",
+                "",
+            ),
+        )
+
+        if delivery_type == "ONLINE" and not event_link:
+            raise serializers.ValidationError({
+                "event_link": (
+                    "برای دوره آنلاین، لینک برگزاری الزامی است."
+                )
+            })
+
+        if delivery_type == "IN_PERSON" and not location:
+            raise serializers.ValidationError({
+                "location": (
+                    "برای دوره حضوری، آدرس برگزاری الزامی است."
+                )
+            })
+
+        capacity = attrs.get(
+            "capacity",
+            getattr(
+                self.instance,
+                "capacity",
+                None,
+            ),
+        )
+
+        if capacity is not None and capacity < 1:
+            raise serializers.ValidationError({
+                "capacity": (
+                    "ظرفیت باید بزرگ‌تر از صفر باشد."
+                )
+            })
+
+        return attrs
+
+
+class UserTrainingSectionSerializer(
+    serializers.ModelSerializer
+):
+
+    section = TrainingSectionSerializer(
+        read_only=True,
+    )
+
+    class Meta:
+        model = UserTrainingSection
+
+        fields = (
+            "id",
+            "section",
+            "started_at",
+        )
+
+        read_only_fields = (
+            "id",
+            "section",
+            "started_at",
+        )
+
+
+class UserTrainingSerializer(serializers.ModelSerializer):
+
+    course = TrainingCourseSerializer(
+        read_only=True,
+    )
+
+    started_sections = UserTrainingSectionSerializer(
+        many=True,
+        read_only=True,
+    )
+
+    class Meta:
+        model = UserTraining
+
+        fields = (
+            "id",
+            "course",
+            "progress",
+            "status",
+            "enrolled_at",
+            "completed_at",
+            "started_sections",
+        )
+
+        read_only_fields = (
+            "id",
+            "course",
+            "progress",
+            "status",
+            "enrolled_at",
+            "completed_at",
+            "started_sections",
+        )
+
+
+

@@ -56,6 +56,19 @@ CHALLENGE_STATUS_CHOICES = (
     ("FINISHED", "Finished"),
     ("CANCELLED", "Cancelled"),
 )
+TRAINING_DELIVERY_TYPE_CHOICES = (
+    ("ONLINE", "Online"),
+    ("IN_PERSON", "In Person"),
+)
+TRAINING_STRUCTURE_CHOICES = (
+    ("SINGLE", "Single Part"),
+    ("MULTI", "Multi Part"),
+)
+TRAINING_STATUS_CHOICES = (
+    ("ENROLLED", "Enrolled"),
+    ("IN_PROGRESS", "In Progress"),
+    ("COMPLETED", "Completed"),
+)
 
 
 # Team
@@ -222,7 +235,7 @@ class JobPosition(models.Model):
         return self.title
 
 
-# Onboarding Checklist Item
+# Onboarding
 class OnboardingChecklistItem(models.Model):
 
     CHECKLIST_TYPE_CHOICES = (
@@ -287,8 +300,6 @@ class OnboardingChecklistItem(models.Model):
     def __str__(self):
         return self.title
 
-
-# Onboarding
 class Onboarding(models.Model):
 
     user = models.OneToOneField(
@@ -360,8 +371,6 @@ class Onboarding(models.Model):
     def __str__(self):
         return f"Onboarding - {self.user}"
 
-
-# Onboarding Checklist Progress
 class OnboardingChecklistProgress(models.Model):
 
     onboarding = models.ForeignKey(
@@ -504,8 +513,6 @@ class Question(models.Model):
     def __str__(self):
         return self.text[:50]
 
-
-# User Mission
 class UserMission(models.Model):
 
     user = models.ForeignKey(
@@ -574,8 +581,6 @@ class Badge(models.Model):
     def __str__(self):
         return self.name
 
-
-# User Badge
 class UserBadge(models.Model):
 
     user = models.ForeignKey(
@@ -608,8 +613,6 @@ class UserBadge(models.Model):
     def __str__(self):
         return f"{self.user} - {self.badge}"
 
-
-# Badge Rule
 class BadgeRule(models.Model):
 
     RULE_TYPE = (
@@ -756,7 +759,6 @@ class Challenge(models.Model):
     def __str__(self):
         return self.name
 
-
 class ChallengeParticipant(models.Model):
 
     challenge = models.ForeignKey(
@@ -801,7 +803,6 @@ class ChallengeParticipant(models.Model):
             f"{self.user.phone_number} - "
             f"{self.challenge.name}"
         )
-
 
 class ChallengeWinner(models.Model):
 
@@ -853,5 +854,232 @@ class ChallengeWinner(models.Model):
             f"{self.challenge.name} - "
             f"{self.user.phone_number}"
         )
+
+
+# Training / Education
+class TrainingCourse(models.Model):
+
+    delivery_type = models.CharField(
+        max_length=20,
+        choices=TRAINING_DELIVERY_TYPE_CHOICES,
+    )
+
+    structure = models.CharField(
+        max_length=20,
+        choices=TRAINING_STRUCTURE_CHOICES,
+        default="SINGLE",
+    )
+
+    name = models.CharField(
+        max_length=255,
+    )
+
+    description = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    instructor_name = models.CharField(
+        max_length=255,
+    )
+
+    duration = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+    )
+
+    sessions_count = models.PositiveIntegerField(
+        default=1,
+    )
+
+    points = models.PositiveIntegerField(
+        default=0,
+    )
+
+    event_link = models.URLField(
+        blank=True,
+        default="",
+    )
+
+    location = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+    )
+
+    capacity = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def participants_count(self):
+        return self.enrollments.exclude(
+            status="COMPLETED"
+        ).count()
+
+    @property
+    def is_full(self):
+        if self.capacity is None:
+            return False
+
+        return self.participants_count >= self.capacity
+
+class TrainingSection(models.Model):
+
+    course = models.ForeignKey(
+        TrainingCourse,
+        on_delete=models.CASCADE,
+        related_name="sections",
+    )
+
+    title = models.CharField(
+        max_length=255,
+    )
+
+    description = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    content_url = models.URLField(
+        blank=True,
+        default="",
+    )
+
+    order = models.PositiveIntegerField(
+        default=1,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = ["order", "id"]
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "course",
+                    "order",
+                ],
+                name="unique_training_section_order",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.course.name} - {self.title}"
+
+class UserTraining(models.Model):
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="training_enrollments",
+    )
+
+    course = models.ForeignKey(
+        TrainingCourse,
+        on_delete=models.CASCADE,
+        related_name="enrollments",
+    )
+
+    progress = models.PositiveSmallIntegerField(
+        default=0,
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(100),
+        ],
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=TRAINING_STATUS_CHOICES,
+        default="ENROLLED",
+    )
+
+    enrolled_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "user",
+                    "course",
+                ],
+                name="unique_user_training",
+            )
+        ]
+        ordering = ["-enrolled_at"]
+
+    def __str__(self):
+        return f"{self.user} - {self.course}"
+
+class UserTrainingSection(models.Model):
+
+    user_training = models.ForeignKey(
+        UserTraining,
+        on_delete=models.CASCADE,
+        related_name="started_sections",
+    )
+
+    section = models.ForeignKey(
+        TrainingSection,
+        on_delete=models.CASCADE,
+        related_name="user_progress",
+    )
+
+    started_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "user_training",
+                    "section",
+                ],
+                name="unique_user_training_section",
+            )
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.user_training.user} - "
+            f"{self.section.title}"
+        )
+
 
 

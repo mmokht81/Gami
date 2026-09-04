@@ -102,7 +102,20 @@ from .views.challenge import (
     ChallengeWinnersAPIView,
     ChallengeAddWinnerAPIView,
 )
-
+from .views.training import (
+    TrainingListAPIView,
+    TrainingDetailAPIView,
+    TrainingEnrollAPIView,
+    TrainingSectionStartAPIView,
+    MyTrainingListAPIView,
+    MyTrainingDetailAPIView,
+)
+from .views.training_admin import (
+    TrainingManagementListCreateAPIView,
+    TrainingManagementDetailAPIView,
+    TrainingSectionListCreateAPIView,
+    TrainingSectionDetailAPIView,
+)
 
 urlpatterns = [
 
@@ -459,5 +472,65 @@ urlpatterns = [
         "api/challenges/<int:pk>/winners/add/",
         ChallengeAddWinnerAPIView.as_view(),
         name="challenge-add-winner",
+    ),
+
+    path(
+        "api/trainings/",
+        TrainingListAPIView.as_view(),
+        name="training-list",
+    ),
+
+    path(
+        "api/trainings/my/",
+        MyTrainingListAPIView.as_view(),
+        name="my-training-list",
+    ),
+
+    path(
+        "api/trainings/my/<int:training_id>/",
+        MyTrainingDetailAPIView.as_view(),
+        name="my-training-detail",
+    ),
+
+    path(
+        "api/trainings/<int:training_id>/",
+        TrainingDetailAPIView.as_view(),
+        name="training-detail",
+    ),
+
+    path(
+        "api/trainings/<int:training_id>/enroll/",
+        TrainingEnrollAPIView.as_view(),
+        name="training-enroll",
+    ),
+
+    path(
+        "api/trainings/<int:training_id>/sections/<int:section_id>/start/",
+        TrainingSectionStartAPIView.as_view(),
+        name="training-section-start",
+    ),
+
+    path(
+        "api/trainings/manage/",
+        TrainingManagementListCreateAPIView.as_view(),
+        name="training-management-list-create",
+    ),
+
+    path(
+        "api/trainings/manage/<int:pk>/",
+        TrainingManagementDetailAPIView.as_view(),
+        name="training-management-detail",
+    ),
+
+    path(
+        "api/trainings/manage/<int:training_id>/sections/",
+        TrainingSectionListCreateAPIView.as_view(),
+        name="training-section-list-create",
+    ),
+
+    path(
+        "api/trainings/manage/<int:training_id>/sections/<int:pk>/",
+        TrainingSectionDetailAPIView.as_view(),
+        name="training-section-detail",
     ),
 ]
