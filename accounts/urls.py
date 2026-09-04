@@ -53,9 +53,11 @@ from .views.job_application import (
     JobApplicationDetailAPIView,
     JobApplicationStatusUpdateAPIView,
 )
+from .views.application_questions import (
+    ApplicationQuestionListCreateAPIView,
+    ApplicationQuestionAnswerAPIView,
+)
 from .views.mission_admin import (
-    MissionCreateAPIView,
-    MissionDetailUpdateDeleteAPIView,
     MissionAssignAPIView,
 )
 from .views.job_position_admin import (
@@ -77,11 +79,11 @@ from .views.badge import (
 from .views.onboarding import (
     MyOnboardingAPIView,
     UserOnboardingAPIView,
+    OnboardingTeamAssignAPIView,
+    OnboardingHRProgressAPIView,
 )
 from .views.onboarding_actions import (
     OnboardingChecklistCompleteAPIView,
-    OnboardingTeamAssignAPIView,
-    OnboardingHRProgressAPIView,
 )
 from .views.onboarding_checklist import (
     OnboardingChecklistListCreateAPIView,
@@ -235,6 +237,18 @@ urlpatterns = [
     ),
 
     path(
+        "api/applications/<int:application_id>/questions/",
+        ApplicationQuestionListCreateAPIView.as_view(),
+        name="application-custom-questions",
+    ),
+
+    path(
+        "api/application-questions/<int:pk>/answer/",
+        ApplicationQuestionAnswerAPIView.as_view(),
+        name="application-custom-question-answer",
+    ),
+
+    path(
         "api/job-positions/<int:job_position_id>/questions/",
         JobQuestionListAPIView.as_view(),
         name="api_job_questions",
@@ -298,18 +312,6 @@ urlpatterns = [
         "api/dashboard/",
         DashboardAPIView.as_view(),
         name="dashboard-api",
-    ),
-
-    path(
-        "api/missions/create/",
-        MissionCreateAPIView.as_view(),
-        name="api_mission_create",
-    ),
-
-    path(
-        "api/missions/<int:pk>/manage/",
-        MissionDetailUpdateDeleteAPIView.as_view(),
-        name="api_mission_manage",
     ),
 
     path(
@@ -533,4 +535,6 @@ urlpatterns = [
         TrainingSectionDetailAPIView.as_view(),
         name="training-section-detail",
     ),
+
+
 ]

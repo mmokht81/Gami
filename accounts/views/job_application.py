@@ -13,6 +13,7 @@ from ..serializers import (
 from ..permissions import IsAdminOrSuperAdmin
 from ..services import OnboardingService
 
+
 class JobApplicationListAPIView(generics.ListAPIView):
     """
     API for retrieving job applications.
@@ -39,6 +40,7 @@ class JobApplicationListAPIView(generics.ListAPIView):
         - User information.
         - Job position information.
         - Application answers.
+        - Custom application questions.
         - Application status.
         - Submission and update dates.
         """,
@@ -57,36 +59,24 @@ class JobApplicationListAPIView(generics.ListAPIView):
         return JobApplicationSerializer
 
     def get_queryset(self):
-
         user = self.request.user
 
-        if user.role in (
-            "ADMIN",
-            "SUPERADMIN",
-        ):
-            return (
-                JobApplication.objects
-                .select_related(
-                    "user",
-                    "job_position",
-                )
-                .order_by(
-                    "-submitted_at"
-                )
-            )
+        if user.role in ("ADMIN", "SUPERADMIN"):
+            return JobApplication.objects.select_related(
+                "user",
+                "job_position",
+            ).prefetch_related(
+                "custom_questions",
+            ).order_by("-submitted_at")
 
-        return (
-            JobApplication.objects
-            .filter(
-                user=user
-            )
-            .select_related(
-                "job_position"
-            )
-            .order_by(
-                "-submitted_at"
-            )
-        )
+        return JobApplication.objects.filter(
+            user=user
+        ).select_related(
+            "job_position",
+        ).prefetch_related(
+            "custom_questions",
+        ).order_by("-submitted_at")
+
 
 class JobApplicationCreateAPIView(generics.CreateAPIView):
     """
@@ -118,6 +108,7 @@ class JobApplicationCreateAPIView(generics.CreateAPIView):
             user=self.request.user
         )
 
+
 class JobApplicationDetailAPIView(generics.RetrieveAPIView):
     """
     API for retrieving a single job application.
@@ -144,6 +135,7 @@ class JobApplicationDetailAPIView(generics.RetrieveAPIView):
         - User information.
         - Job position information.
         - Application answers.
+        - Custom application questions.
         """,
     )
     def get(self, request, *args, **kwargs):
@@ -160,30 +152,24 @@ class JobApplicationDetailAPIView(generics.RetrieveAPIView):
         return JobApplicationSerializer
 
     def get_queryset(self):
-
         user = self.request.user
 
-        if user.role in (
-            "ADMIN",
-            "SUPERADMIN",
-        ):
-            return (
-                JobApplication.objects
-                .select_related(
-                    "user",
-                    "job_position",
-                )
+        if user.role in ("ADMIN", "SUPERADMIN"):
+            return JobApplication.objects.select_related(
+                "user",
+                "job_position",
+            ).prefetch_related(
+                "custom_questions",
             )
 
-        return (
-            JobApplication.objects
-            .filter(
-                user=user
-            )
-            .select_related(
-                "job_position"
-            )
+        return JobApplication.objects.filter(
+            user=user
+        ).select_related(
+            "job_position",
+        ).prefetch_related(
+            "custom_questions",
         )
+
 
 class JobApplicationStatusUpdateAPIView(
     generics.UpdateAPIView
@@ -201,9 +187,15 @@ class JobApplicationStatusUpdateAPIView(
         IsAdminOrSuperAdmin
     ]
 
-    queryset = JobApplication.objects.select_related(
-        "user",
-        "job_position",
+    queryset = (
+        JobApplication.objects
+        .select_related(
+            "user",
+            "job_position",
+        )
+        .prefetch_related(
+            "custom_questions"
+        )
     )
 
     @extend_schema(
@@ -254,7 +246,6 @@ class JobApplicationStatusUpdateAPIView(
             application.status == "ACCEPTED"
             and old_status != "ACCEPTED"
         ):
-
             OnboardingService.ensure_for_level_one_user(
                 application.user
             )
@@ -268,5 +259,3 @@ class JobApplicationStatusUpdateAPIView(
         return Response(
             return_serializer.data
         )
-
-

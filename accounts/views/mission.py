@@ -1,4 +1,5 @@
-from rest_framework import generics
+from rest_framework import generics, status
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
 from drf_spectacular.utils import extend_schema
@@ -12,6 +13,7 @@ from ..serializers import (
     MissionSerializer,
 )
 from ..permissions import IsAdminOrSuperAdmin
+from ..automatic_mission_service import AutomaticMissionService
 
 class MissionListAPIView(generics.ListAPIView):
     """
@@ -39,17 +41,16 @@ class MissionListAPIView(generics.ListAPIView):
         return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
-        return (
-            UserMission.objects
-            .filter(
-                user=self.request.user
-            )
-            .select_related(
-                "mission"
-            )
-            .order_by(
-                "-created_at"
-            )
+        AutomaticMissionService.sync_all_for_user(
+            self.request.user
+        )
+
+        return UserMission.objects.filter(
+            user=self.request.user
+        ).select_related(
+            "mission"
+        ).order_by(
+            "-created_at"
         )
 
 class MissionDetailAPIView(generics.RetrieveAPIView):
@@ -119,28 +120,46 @@ Supported methods:
 class MissionManagementDetailAPIView(
     generics.RetrieveUpdateDestroyAPIView
 ):
-    """
-    API for retrieving, updating and deleting a mission.
-    """
-
     serializer_class = MissionSerializer
     permission_classes = [IsAdminOrSuperAdmin]
 
-    @extend_schema(
-        summary="Get, update or delete mission",
-        description="""
-Returns, updates or deletes a specific mission.
-
-Supported methods:
-- GET
-- PUT
-- PATCH
-- DELETE
-""",
-        responses=MissionSerializer,
-    )
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
-
     def get_queryset(self):
         return Mission.objects.all()
+
+    def update(self, request, *args, **kwargs):
+        mission = self.get_object()
+
+        if mission.type == "AUTOMATIC":
+            return Response(
+                {
+                    "detail": (
+                        "ماموریت‌های خودکار قابل ویرایش نیستند."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        return super().update(
+            request,
+            *args,
+            **kwargs,
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        mission = self.get_object()
+
+        if mission.type == "AUTOMATIC":
+            return Response(
+                {
+                    "detail": (
+                        "ماموریت‌های خودکار قابل حذف نیستند."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        return super().destroy(
+            request,
+            *args,
+            **kwargs,
+        )

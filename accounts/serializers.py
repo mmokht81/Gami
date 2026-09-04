@@ -26,15 +26,12 @@ from .models import (
     TrainingSection,
     UserTraining,
     UserTrainingSection,
+    ApplicationQuestion,
 )
 
 
-# ============================================================
 # User
-# ============================================================
-
 class UserSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = User
 
@@ -109,12 +106,8 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         )
 
 
-# ============================================================
 # Mission
-# ============================================================
-
 class MissionSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Mission
         fields = "__all__"
@@ -159,10 +152,7 @@ class AssignMissionSerializer(serializers.Serializer):
         return user
 
 
-# ============================================================
 # Job Position
-# ============================================================
-
 class JobPositionSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -194,10 +184,7 @@ class JobPositionSerializer(serializers.ModelSerializer):
         ]
 
 
-# ============================================================
 # Questions
-# ============================================================
-
 class QuestionSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -235,10 +222,7 @@ class QuestionSerializer(serializers.ModelSerializer):
         return value.strip()
 
 
-# ============================================================
 # Job Application
-# ============================================================
-
 class ApplicationAnswerInputSerializer(serializers.Serializer):
     """
     Validates a single answer submitted for a job application.
@@ -433,6 +417,44 @@ class JobApplicationSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class ApplicationQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ApplicationQuestion
+        fields = [
+            "id",
+            "application",
+            "text",
+            "answer",
+            "is_answered",
+            "created_at",
+            "answered_at",
+        ]
+        read_only_fields = [
+            "id",
+            "application",
+            "answer",
+            "is_answered",
+            "created_at",
+            "answered_at",
+        ]
+
+
+class ApplicationQuestionAnswerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ApplicationQuestion
+        fields = ["answer"]
+
+    def validate_answer(self, value):
+        value = value.strip()
+
+        if not value:
+            raise serializers.ValidationError(
+                "Answer cannot be empty."
+            )
+
+        return value
+
+
 class JobApplicationAdminSerializer(serializers.ModelSerializer):
 
     user = UserSerializer(
@@ -448,6 +470,11 @@ class JobApplicationAdminSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    custom_questions = ApplicationQuestionSerializer(
+        many=True,
+        read_only=True,
+    )
+
     class Meta:
         model = JobApplication
 
@@ -458,6 +485,7 @@ class JobApplicationAdminSerializer(serializers.ModelSerializer):
             "status",
             "status_display",
             "answers",
+            "custom_questions",
             "submitted_at",
             "updated_at",
         )
@@ -490,10 +518,69 @@ class JobApplicationStatusSerializer(serializers.ModelSerializer):
         return value
 
 
-# ============================================================
-# Authentication
-# ============================================================
+# Application Custom Questions
+class ApplicationQuestionSerializer(
+    serializers.ModelSerializer
+):
 
+    class Meta:
+        model = ApplicationQuestion
+
+        fields = (
+            "id",
+            "application",
+            "text",
+            "answer",
+            "is_answered",
+            "created_at",
+            "answered_at",
+        )
+
+        read_only_fields = (
+            "id",
+            "application",
+            "answer",
+            "is_answered",
+            "created_at",
+            "answered_at",
+        )
+
+    def validate_text(self, value):
+
+        value = value.strip()
+
+        if not value:
+            raise serializers.ValidationError(
+                "متن سوال نمی‌تواند خالی باشد."
+            )
+
+        return value
+
+
+class ApplicationQuestionAnswerSerializer(
+    serializers.ModelSerializer
+):
+
+    class Meta:
+        model = ApplicationQuestion
+
+        fields = (
+            "answer",
+        )
+
+    def validate_answer(self, value):
+
+        value = value.strip()
+
+        if not value:
+            raise serializers.ValidationError(
+                "پاسخ نمی‌تواند خالی باشد."
+            )
+
+        return value
+
+
+# Authentication
 class PhoneAPISerializer(serializers.Serializer):
 
     phone_number = serializers.CharField(

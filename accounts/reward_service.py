@@ -97,22 +97,20 @@ class RewardService:
 
     @staticmethod
     @transaction.atomic
-    def award_points(user, points):
-        """
-        Award points and update level.
-
-        Returns a RewardResult containing:
-        - current points
-        - level-up information
-        """
-
+    def award_points(
+        user,
+        points,
+        sync_automatic_missions=True,
+    ):
         if points < 0:
             raise ValueError("points cannot be negative.")
 
         if points > 0:
             user.points = F("points") + points
             user.save(update_fields=["points"])
-            user.refresh_from_db(fields=["points", "level"])
+            user.refresh_from_db(
+                fields=["points", "level"]
+            )
 
         level_result = LevelService.update_level(user)
 
@@ -120,12 +118,37 @@ class RewardService:
             level_result["level_up"]
             and level_result["new_level"] == 1
         ):
-
             from .services import OnboardingService
 
-            OnboardingService.ensure_for_level_one_user(
-                user
+            OnboardingService.ensure_for_level_one_user(user)
+
+        automatic_rewards = []
+
+        if sync_automatic_missions:
+            from .automatic_mission_service import (
+                AutomaticMissionService,
             )
+
+            completed_missions = (
+                AutomaticMissionService.sync_all_for_user(user)
+            )
+
+            for user_mission in completed_missions:
+                mission = user_mission.mission
+
+                automatic_reward = RewardService.award_points(
+                    user=user,
+                    points=mission.points,
+                    sync_automatic_missions=False,
+                )
+
+                automatic_rewards.append(
+                    {
+                        "mission": mission.name,
+                        "points": automatic_reward["points"],
+                        "level_up": automatic_reward["level_up"],
+                    }
+                )
 
         level_up = None
 
@@ -138,6 +161,7 @@ class RewardService:
         return {
             "points": user.points,
             "level_up": level_up,
+            "automatic_rewards": automatic_rewards,
         }
 
 

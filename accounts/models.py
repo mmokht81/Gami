@@ -435,6 +435,24 @@ class Mission(models.Model):
         default=True,
     )
 
+    target_level = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
+
+    target_points = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
+
+    job_position = models.ForeignKey(
+        JobPosition,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="automatic_missions",
+    )
+
     class Meta:
         ordering = ["name"]
 
@@ -512,6 +530,45 @@ class Question(models.Model):
 
     def __str__(self):
         return self.text[:50]
+
+
+# Application Custom Question
+class ApplicationQuestion(models.Model):
+
+    application = models.ForeignKey(
+        JobApplication,
+        on_delete=models.CASCADE,
+        related_name="custom_questions",
+    )
+
+    text = models.TextField()
+
+    answer = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    is_answered = models.BooleanField(
+        default=False,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    answered_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return (
+            f"{self.application.user} - "
+            f"{self.text[:50]}"
+        )
 
 class UserMission(models.Model):
 

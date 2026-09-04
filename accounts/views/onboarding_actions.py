@@ -5,16 +5,12 @@ from rest_framework.response import Response
 from ..models import (
     Onboarding,
     OnboardingChecklistItem,
-    Team,
 )
-from ..permissions import IsAdminOrSuperAdmin
-from ..services import OnboardingService
 from ..serializers import (
     OnboardingSerializer,
     OnboardingChecklistCompleteSerializer,
-    OnboardingHRProgressSerializer,
-    OnboardingTeamAssignSerializer,
 )
+from ..services import OnboardingService
 
 
 class OnboardingChecklistCompleteAPIView(
@@ -110,144 +106,3 @@ class OnboardingChecklistCompleteAPIView(
             ).data,
             status=status.HTTP_200_OK,
         )
-
-
-class OnboardingHRProgressAPIView(
-    generics.GenericAPIView
-):
-
-    permission_classes = [
-        IsAdminOrSuperAdmin
-    ]
-
-    serializer_class = (
-        OnboardingHRProgressSerializer
-    )
-
-    def patch(self, request, user_id):
-
-        onboarding = (
-            Onboarding.objects
-            .filter(
-                user_id=user_id
-            )
-            .first()
-        )
-
-        if onboarding is None:
-
-            return Response(
-                {
-                    "detail": (
-                        "برای این کاربر Onboarding وجود ندارد."
-                    )
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        serializer = self.get_serializer(
-            data=request.data
-        )
-
-        serializer.is_valid(
-            raise_exception=True
-        )
-
-        onboarding = (
-            OnboardingService.set_hr_progress(
-                onboarding=onboarding,
-                value=serializer.validated_data[
-                    "hr_progress"
-                ],
-            )
-        )
-
-        return Response(
-            OnboardingSerializer(
-                onboarding
-            ).data,
-            status=status.HTTP_200_OK,
-        )
-
-
-class OnboardingTeamAssignAPIView(
-    generics.GenericAPIView
-):
-
-    permission_classes = [
-        IsAdminOrSuperAdmin
-    ]
-
-    serializer_class = (
-        OnboardingTeamAssignSerializer
-    )
-
-    def patch(self, request, user_id):
-
-        onboarding = (
-            Onboarding.objects
-            .filter(
-                user_id=user_id
-            )
-            .first()
-        )
-
-        if onboarding is None:
-
-            return Response(
-                {
-                    "detail": (
-                        "برای این کاربر Onboarding وجود ندارد."
-                    )
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        serializer = self.get_serializer(
-            data=request.data
-        )
-
-        serializer.is_valid(
-            raise_exception=True
-        )
-
-        team = (
-            Team.objects
-            .filter(
-                id=serializer.validated_data[
-                    "team_id"
-                ],
-                is_active=True,
-            )
-            .first()
-        )
-
-        if team is None:
-
-            return Response(
-                {
-                    "detail": (
-                        "Team پیدا نشد."
-                    )
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        onboarding = (
-            OnboardingService.assign_team(
-                onboarding=onboarding,
-                team=team,
-            )
-        )
-
-        return Response(
-            OnboardingSerializer(
-                onboarding
-            ).data,
-            status=status.HTTP_200_OK,
-        )
-
-
-
-
-

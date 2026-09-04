@@ -17,6 +17,7 @@ from .models import (
     JobPosition,
     Question,
     JobApplication,
+    ApplicationQuestion,
     TrainingCourse,
     TrainingSection,
     UserTraining,
@@ -804,15 +805,12 @@ class MissionPermissionTests(APITestCase):
             )
         )
 
-    def test_normal_user_cannot_create_mission(self):
+    def test_normal_user_cannot_assign_mission(self):
 
         response = self.client.post(
-            "/api/missions/create/",
+            f"/api/mission-management/{self.mission.id}/assign/",
             {
-                "name": "Unauthorized Mission",
-                "description": "Should fail",
-                "type": "USER",
-                "points": 100,
+                "user_id": self.user.id,
             },
             format="json",
         )
@@ -1449,6 +1447,262 @@ class ApplicationTests(APITestCase):
                 application.status,
                 status,
             )
+
+    def test_hr_can_create_application_custom_question(self):
+
+        application = JobApplication.objects.create(
+            user=self.user,
+            job_position=self.job_position,
+            answers=[],
+        )
+
+        self.authenticate_hr()
+
+        url = (
+            f"/api/applications/"
+            f"{application.id}/questions/"
+        )
+
+        response = self.client.post(
+            url,
+            {
+                "text": "چرا فکر می‌کنید برای این موقعیت مناسب هستید؟",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            201,
+        )
+
+        self.assertTrue(
+            ApplicationQuestion.objects.filter(
+                application=application,
+                text="چرا فکر می‌کنید برای این موقعیت مناسب هستید؟",
+            ).exists()
+        )
+
+    def test_user_can_view_own_application_custom_questions(self):
+
+        application = JobApplication.objects.create(
+            user=self.user,
+            job_position=self.job_position,
+            answers=[],
+        )
+
+        question = ApplicationQuestion.objects.create(
+            application=application,
+            text="تجربه کاری خود را توضیح دهید.",
+        )
+
+        url = (
+            f"/api/applications/"
+            f"{application.id}/questions/"
+        )
+
+        response = self.client.get(url)
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        results = response.data["results"]
+
+        self.assertTrue(
+            any(
+                item["id"] == question.id
+                for item in results
+            )
+        )
+
+    def test_user_can_answer_application_custom_question(self):
+
+        application = JobApplication.objects.create(
+            user=self.user,
+            job_position=self.job_position,
+            answers=[],
+        )
+
+        question = ApplicationQuestion.objects.create(
+            application=application,
+            text="چرا باید شما را استخدام کنیم؟",
+        )
+
+        url = (
+            f"/api/application-questions/"
+            f"{question.id}/answer/"
+        )
+
+        response = self.client.patch(
+            url,
+            {
+                "answer": "چون تجربه خوبی در Django دارم.",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        question.refresh_from_db()
+
+        self.assertEqual(
+            question.answer,
+            "چون تجربه خوبی در Django دارم.",
+        )
+
+        self.assertTrue(
+            question.is_answered,
+        )
+
+        self.assertIsNotNone(
+            question.answered_at,
+        )
+
+    def test_user_cannot_create_application_custom_question(self):
+
+        application = JobApplication.objects.create(
+            user=self.user,
+            job_position=self.job_position,
+            answers=[],
+        )
+
+        url = (
+            f"/api/applications/"
+            f"{application.id}/questions/"
+        )
+
+        response = self.client.post(
+            url,
+            {
+                "text": "Unauthorized question",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
+
+        self.assertFalse(
+            ApplicationQuestion.objects.filter(
+                application=application,
+            ).exists()
+        )
+
+    def test_user_cannot_view_another_users_application_questions(self):
+
+        other_user = User.objects.create_user(
+            phone_number="09129999999",
+            password="testpassword123",
+        )
+
+        application = JobApplication.objects.create(
+            user=other_user,
+            job_position=self.job_position,
+            answers=[],
+        )
+
+        ApplicationQuestion.objects.create(
+            application=application,
+            text="Private HR question",
+        )
+
+        url = (
+            f"/api/applications/"
+            f"{application.id}/questions/"
+        )
+
+        response = self.client.get(url)
+
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
+
+    def test_user_cannot_answer_another_users_application_question(self):
+
+        other_user = User.objects.create_user(
+            phone_number="09128888888",
+            password="testpassword123",
+        )
+
+        application = JobApplication.objects.create(
+            user=other_user,
+            job_position=self.job_position,
+            answers=[],
+        )
+
+        question = ApplicationQuestion.objects.create(
+            application=application,
+            text="Private question",
+        )
+
+        url = (
+            f"/api/application-questions/"
+            f"{question.id}/answer/"
+        )
+
+        response = self.client.patch(
+            url,
+            {
+                "answer": "Should not work",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            404,
+        )
+
+        question.refresh_from_db()
+
+        self.assertFalse(
+            question.is_answered,
+        )
+
+    def test_empty_custom_question_answer_is_rejected(self):
+
+        application = JobApplication.objects.create(
+            user=self.user,
+            job_position=self.job_position,
+            answers=[],
+        )
+
+        question = ApplicationQuestion.objects.create(
+            application=application,
+            text="Test question",
+        )
+
+        url = (
+            f"/api/application-questions/"
+            f"{question.id}/answer/"
+        )
+
+        response = self.client.patch(
+            url,
+            {
+                "answer": "   ",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            400,
+        )
+
+        question.refresh_from_db()
+
+        self.assertFalse(
+            question.is_answered,
+        )
 
 
 class JobApplicationValidationTests(APITestCase):
