@@ -2,7 +2,7 @@
 
 Gami is a gamification and recruitment backend built with **Django** and **Django REST Framework**.
 
-The backend provides authentication, user management, job positions, recruitment applications, missions, points, levels, badges, and related APIs.
+The project provides authentication, recruitment, gamification, onboarding, challenges, and training features through RESTful APIs.
 
 ---
 
@@ -11,146 +11,66 @@ The backend provides authentication, user management, job positions, recruitment
 * Python
 * Django
 * Django REST Framework
-* SQLite (development)
+* SQLite
 * JWT Authentication
-* RESTful APIs
+* REST APIs
 
 ---
 
-## Current Phase 2 Features
+## Features
 
-The current Phase 2 implementation includes the following modules:
+### Authentication & Users
 
-### 1. Points & Levels
+* Phone number registration and login
+* OTP verification
+* JWT authentication
+* User profiles
+* Role-based permissions
 
-The reward system automatically manages user points and levels.
+### Recruitment
 
-When a user completes a rewarded activity:
-
-```text
-Activity Completed
-       ↓
-   Award Points
-       ↓
-   Update Level
-       ↓
- Check Badge Rules
-```
-
-Points are managed on the backend and levels are calculated based on configured point thresholds.
-
----
-
-### 2. Badges
-
-The badge system supports:
-
-* Creating badges
-* Listing available badges
-* Viewing a user's badges
-* Manually assigning badges
-* Automatic badge assignment based on rules
-* Preventing duplicate badge assignments
-
-Currently supported automatic badge rules include mission completion based rules.
-
-Example:
-
-```text
-Complete 3 Missions
-        ↓
-Automatic Badge Assignment
-```
-
----
-
-### 3. Missions
-
-The mission lifecycle is managed through the backend:
-
-```text
-Assign
-  ↓
-Start
-  ↓
-Progress
-  ↓
-Complete
-```
-
-When a mission is completed, the backend can automatically:
-
-* Mark the mission as completed
-* Set progress to 100%
-* Award points
-* Recalculate the user's level
-* Check automatic badge rules
-* Return the earned rewards
-
----
-
-### 4. Job Applications
-
-Users can submit applications for available job positions.
-
-The application system supports:
-
-* Creating applications
-* Viewing user's applications
-* Viewing application details
-* HR/Admin access to applications
+* Job positions
+* Job applications
 * Application status management
 * Application questions and answers
+* HR/Admin application management
+
+### Gamification
+
+* Missions
+* Mission progress and completion
+* Points and levels
+* Badges
+* Automatic rewards
+* Automatic missions
+
+### Onboarding
+
+* User onboarding
+* Onboarding checklist
+* HR progress
+* Team assignment
+* Completion tracking
+
+### Challenges
+
+* Challenges and competitions
+* User participation
+* Winners
+* Challenge status management
+
+### Training
+
+* Training courses
+* User enrollment
+* Training sections
+* Progress tracking
+* Training completion
+* Training rewards
 
 ---
 
-### 5. Application Questions & Answers
-
-Job positions can have custom questions.
-
-Users can submit answers together with their application.
-
-The backend validates that:
-
-* The question exists
-* The question belongs to the selected job position
-* The question is active
-* A question is not answered more than once
-* Required answer fields are provided
-
----
-
-### 6. Application Status Management
-
-The current application workflow supports the following statuses:
-
-```text
-PENDING_REVIEW
-      ↓
-HR_REVIEW
-      ↓
-WAITING_FOR_USER
-      ↓
-MANAGEMENT_REVIEW
-      ↓
-ACCEPTED
-```
-
-An application can also be marked as:
-
-```text
-REJECTED
-```
-
-HR/Admin users can update application statuses through the API.
-
----
-
-## API Overview
-
-### Authentication
-
-JWT-based authentication is used for protected API endpoints.
+## API Examples
 
 ### Profile
 
@@ -162,46 +82,16 @@ GET /api/profile/
 
 ```http
 GET  /api/missions/
-GET  /api/missions/<id>/
 POST /api/missions/<id>/start/
 PATCH /api/missions/<id>/progress/
 POST /api/missions/<id>/complete/
 ```
 
-### Mission Management
-
-```http
-POST /api/mission-management/<mission_id>/assign/
-```
-
 ### Badges
 
 ```http
-GET  /api/badges/
-POST /api/badges/
-
-GET  /api/badges/<id>/
-GET  /api/badges/my/
-GET  /api/badges/users/<user_id>/
-
-POST /api/badges/<badge_id>/users/<user_id>/assign/
-```
-
-### Job Positions
-
-```http
-GET /api/job-positions/
-GET /api/job-positions/<id>/
-```
-
-### Job Position Questions
-
-```http
-GET /api/job-positions/<job_position_id>/questions/
-POST /api/questions/create/
-
-PUT/PATCH /api/questions/<id>/
-DELETE     /api/questions/<id>/
+GET /api/badges/
+GET /api/badges/my/
 ```
 
 ### Applications
@@ -213,23 +103,30 @@ GET  /api/applications/<id>/
 PATCH /api/applications/<id>/status/
 ```
 
+### Job Positions
+
+```http
+GET /api/job-positions/
+GET /api/job-positions/<id>/
+```
+
 ---
 
 ## Permissions
 
 The API uses role-based access control.
 
-Depending on the endpoint, access may be restricted to:
+Available roles:
 
-* Authenticated users
-* Admin users
-* Super Admin users
+* `USER`
+* `ADMIN`
+* `SUPERADMIN`
 
-Users can access their own personal data and applications, while authorized HR/Admin users can manage recruitment-related data.
+Protected endpoints require authentication, while administrative operations require the appropriate role.
 
 ---
 
-## Running the Project Locally
+## Running Locally
 
 ### 1. Clone the repository
 
@@ -240,18 +137,9 @@ cd Gami
 
 ### 2. Create a virtual environment
 
-Windows:
-
 ```bash
 python -m venv venv
 venv\Scripts\activate
-```
-
-Linux / macOS:
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
 ```
 
 ### 3. Install dependencies
@@ -266,7 +154,7 @@ pip install -r requirements.txt
 python manage.py migrate
 ```
 
-### 5. Run the development server
+### 5. Run the server
 
 ```bash
 python manage.py runserver
@@ -282,9 +170,7 @@ http://127.0.0.1:8000/
 
 ## Testing
 
-The backend currently includes automated tests covering the implemented functionality.
-
-Run the test suite with:
+Run the test suite:
 
 ```bash
 python manage.py test accounts
@@ -293,50 +179,28 @@ python manage.py test accounts
 Current status:
 
 ```text
-28 tests
-28 passed
-```
-
-Django system checks can also be run with:
-
-```bash
-python manage.py check
+109 tests
+109 passed
+0 failed
 ```
 
 ---
 
 ## Project Status
 
-### Phase 2 — Current Progress
+**Phase 2 completed.**
 
-Implemented:
+Implemented modules:
 
-* [x] Points & Rewards
-* [x] Level System
-* [x] Badge System
-* [x] Automatic Badge Rules
-* [x] Mission Lifecycle
-* [x] Mission Progress
-* [x] Mission Completion
-* [x] Job Applications
-* [x] Application Status Management
-* [x] Application Questions
-* [x] Application Answers
-* [x] HR/Admin Application Management
+* Authentication & Users
+* Job Positions
+* Job Applications
+* Missions
+* Points & Levels
+* Badges
+* Onboarding
+* Challenges & Competitions
+* Training
+* Rewards & Idempotency
 
-Planned next:
-
-* [ ] Onboarding
-* [ ] Challenges & Competitions
-* [ ] Training
-* [ ] Final Integration & Improvements
-
----
-
-## Development Notes
-
-The backend is designed around service-based business logic for important operations such as missions and rewards.
-
-For example, mission completion is handled centrally so that points, levels, and automatic badges remain consistent regardless of the client consuming the API.
-
-The project is currently under active development as part of Phase 2.
+The project is ready for final integration and further development.
