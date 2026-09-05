@@ -12,7 +12,6 @@ from ..serializers import (
     OnboardingSerializer,
     OnboardingTeamAssignSerializer,
     OnboardingHRProgressSerializer,
-    OnboardingChecklistCompleteSerializer,
 )
 from ..services import OnboardingService
 
@@ -29,6 +28,23 @@ class MyOnboardingAPIView(
 
     def get_object(self):
 
+        user = self.request.user
+
+        # Make sure eligible Level 1 users
+        # have an onboarding record.
+        onboarding = (
+            OnboardingService
+            .ensure_for_level_one_user(user)
+        )
+
+        if onboarding is None:
+
+            raise Onboarding.DoesNotExist(
+                "برای این کاربر Onboarding قابل ایجاد نیست. "
+                "کاربر باید Level 1 باشد و یک درخواست استخدام "
+                "پذیرفته‌شده داشته باشد."
+            )
+
         return (
             Onboarding.objects
             .select_related(
@@ -42,7 +58,7 @@ class MyOnboardingAPIView(
                 "user__badges__badge",
             )
             .get(
-                user=self.request.user
+                user=user
             )
         )
 
@@ -59,7 +75,30 @@ class UserOnboardingAPIView(
 
     lookup_url_kwarg = "user_id"
 
-    def get_queryset(self):
+    def get_object(self):
+
+        user_id = self.kwargs[
+            self.lookup_url_kwarg
+        ]
+
+        from ..models import User
+
+        user = User.objects.get(
+            id=user_id
+        )
+
+        onboarding = (
+            OnboardingService
+            .ensure_for_level_one_user(user)
+        )
+
+        if onboarding is None:
+
+            raise Onboarding.DoesNotExist(
+                "برای این کاربر Onboarding قابل ایجاد نیست. "
+                "کاربر باید Level 1 باشد و یک درخواست استخدام "
+                "پذیرفته‌شده داشته باشد."
+            )
 
         return (
             Onboarding.objects
@@ -72,6 +111,9 @@ class UserOnboardingAPIView(
                 "checklist_progress_items__checklist_item",
                 "team__onboardings__user",
                 "user__badges__badge",
+            )
+            .get(
+                user_id=user_id
             )
         )
 
@@ -102,35 +144,56 @@ class OnboardingTeamAssignAPIView(
             "team_id"
         ]
 
+        from ..models import User
+
         try:
-            onboarding = (
-                Onboarding.objects
-                .get(
-                    user_id=user_id
-                )
+
+            user = User.objects.get(
+                id=user_id,
+                is_active=True,
             )
-        except Onboarding.DoesNotExist:
+
+        except User.DoesNotExist:
+
+            return Response(
+                {
+                    "detail": "کاربر پیدا نشد."
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Automatically create onboarding
+        # for eligible Level 1 users.
+        onboarding = (
+            OnboardingService
+            .ensure_for_level_one_user(user)
+        )
+
+        if onboarding is None:
+
             return Response(
                 {
                     "detail": (
-                        "Onboarding برای این کاربر "
-                        "وجود ندارد."
+                        "برای این کاربر Onboarding قابل ایجاد نیست. "
+                        "کاربر باید Level 1 باشد و یک درخواست استخدام "
+                        "پذیرفته‌شده داشته باشد."
                     )
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
 
         try:
+
             team = Team.objects.get(
                 id=team_id,
                 is_active=True,
             )
+
         except Team.DoesNotExist:
+
             return Response(
                 {
-                    "detail": (
-                        "Team پیدا نشد."
-                    )
+                    "detail": "Team پیدا نشد."
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
@@ -175,19 +238,37 @@ class OnboardingHRProgressAPIView(
             "hr_progress"
         ]
 
+        from ..models import User
+
         try:
-            onboarding = (
-                Onboarding.objects
-                .get(
-                    user_id=user_id
-                )
+
+            user = User.objects.get(
+                id=user_id,
+                is_active=True,
             )
-        except Onboarding.DoesNotExist:
+
+        except User.DoesNotExist:
+
+            return Response(
+                {
+                    "detail": "کاربر پیدا نشد."
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        onboarding = (
+            OnboardingService
+            .ensure_for_level_one_user(user)
+        )
+
+        if onboarding is None:
+
             return Response(
                 {
                     "detail": (
-                        "Onboarding برای این کاربر "
-                        "وجود ندارد."
+                        "برای این کاربر Onboarding قابل ایجاد نیست. "
+                        "کاربر باید Level 1 باشد و یک درخواست استخدام "
+                        "پذیرفته‌شده داشته باشد."
                     )
                 },
                 status=status.HTTP_404_NOT_FOUND,
@@ -205,4 +286,5 @@ class OnboardingHRProgressAPIView(
                 onboarding
             ).data
         )
+
 

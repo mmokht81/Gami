@@ -407,3 +407,74 @@ class OnboardingAPITests(TestCase):
             response.status_code,
             403,
         )
+
+    def test_level_one_user_without_existing_onboarding_gets_onboarding_automatically(self):
+
+        # Delete the existing onboarding
+        Onboarding.objects.filter(
+            user=self.user
+        ).delete()
+
+        self.client.force_authenticate(
+            user=self.user
+        )
+
+        response = self.client.get(
+            "/api/onboarding/"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertTrue(
+            Onboarding.objects.filter(
+                user=self.user
+            ).exists()
+        )
+
+        onboarding = Onboarding.objects.get(
+            user=self.user
+        )
+
+        self.assertEqual(
+            onboarding.user,
+            self.user,
+        )
+
+        self.assertEqual(
+            onboarding.job_position,
+            self.job_position,
+        )
+    def test_admin_can_assign_team_even_if_onboarding_does_not_exist(self):
+
+        Onboarding.objects.filter(
+            user=self.user
+        ).delete()
+
+        self.client.force_authenticate(
+            user=self.admin
+        )
+
+        response = self.client.patch(
+            f"/api/onboarding/users/{self.user.id}/team/",
+            {
+                "team_id": self.team.id
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        onboarding = Onboarding.objects.get(
+            user=self.user
+        )
+
+        self.assertEqual(
+            onboarding.team_id,
+            self.team.id,
+        )

@@ -7,8 +7,14 @@ from .models import (
     JobPosition,
     Question,
     JobApplication,
+    Badge,
+    UserBadge,
+    Level,
+    Team,
+    Onboarding,
+    OnboardingChecklistItem,
+    OnboardingChecklistProgress,
 )
-from .models import Badge, UserBadge, Level
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -187,6 +193,122 @@ class LevelAdmin(admin.ModelAdmin):
 
     ordering = (
         "level",
+    )
+
+
+@admin.register(Team)
+class TeamAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "name",
+        "is_active",
+        "created_at",
+        "updated_at",
+    )
+
+    search_fields = (
+        "name",
+        "description",
+    )
+
+    list_filter = (
+        "is_active",
+    )
+
+    ordering = (
+        "name",
+    )
+
+
+@admin.register(Onboarding)
+class OnboardingAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "user",
+        "job_position",
+        "team",
+        "checklist_progress",
+        "hr_progress",
+        "progress",
+        "created_at",
+    )
+
+    search_fields = (
+        "user__phone_number",
+        "user__first_name",
+        "user__last_name",
+        "job_position__title",
+        "team__name",
+    )
+
+    list_filter = (
+        "job_position",
+        "team",
+    )
+
+    ordering = (
+        "-created_at",
+    )
+
+    autocomplete_fields = (
+        "user",
+        "job_position",
+        "team",
+    )
+
+
+@admin.register(OnboardingChecklistItem)
+class OnboardingChecklistItemAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "title",
+        "job_position",
+        "type",
+        "points",
+        "order",
+        "is_active",
+    )
+
+    search_fields = (
+        "title",
+        "description",
+        "job_position__title",
+    )
+
+    list_filter = (
+        "type",
+        "is_active",
+        "job_position",
+    )
+
+    ordering = (
+        "job_position",
+        "order",
+        "id",
+    )
+
+
+@admin.register(OnboardingChecklistProgress)
+class OnboardingChecklistProgressAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "onboarding",
+        "checklist_item",
+        "is_completed",
+        "completed_at",
+    )
+
+    search_fields = (
+        "onboarding__user__phone_number",
+        "checklist_item__title",
+    )
+
+    list_filter = (
+        "is_completed",
+    )
+
+    ordering = (
+        "-completed_at",
     )
 
 
