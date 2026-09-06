@@ -12,7 +12,6 @@ from .models import (
     UserMission,
     Badge,
     UserBadge,
-    BadgeRule,
     Level,
     JobPosition,
     Question,
@@ -312,12 +311,8 @@ class MissionServiceTests(TestCase):
             is_active=True,
         )
 
-        BadgeRule.objects.create(
-            badge=badge,
-            rule_type="MISSIONS_COMPLETED",
-            value=5,
-            is_active=True,
-        )
+        badge.required_missions = 5
+        badge.save()
 
         # Complete first 4 missions.
 
@@ -397,12 +392,8 @@ class MissionServiceTests(TestCase):
             is_active=True,
         )
 
-        BadgeRule.objects.create(
-            badge=badge,
-            rule_type="MISSIONS_COMPLETED",
-            value=5,
-            is_active=True,
-        )
+        badge.required_missions = 5
+        badge.save()
 
         # Complete first 4 missions.
 

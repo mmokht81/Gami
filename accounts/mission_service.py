@@ -2,10 +2,8 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from .models import Mission, UserMission
-from .reward_service import (
-    RewardService,
-    BadgeRewardService,
-)
+from .reward_service import RewardService
+from .services import BadgeService
 
 
 class MissionService:
@@ -234,10 +232,8 @@ class MissionService:
             points=mission.points,
         )
 
-        badges = (
-            BadgeRewardService.check_automatic_badges(
-                user=user
-            )
+        badges = BadgeService.check_automatic_badges(
+            user=user
         )
 
         return {

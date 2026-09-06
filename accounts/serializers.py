@@ -13,7 +13,6 @@ from .models import (
     JobApplication,
     Badge,
     UserBadge,
-    BadgeRule,
     APPLICATION_STATUS,
     Team,
     Onboarding,
@@ -700,38 +699,7 @@ class UserAdminSerializer(serializers.ModelSerializer):
 
 
 # Badge
-class BadgeRuleSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = BadgeRule
-
-        fields = (
-            "id",
-            "rule_type",
-            "value",
-            "is_active",
-        )
-
-        read_only_fields = (
-            "id",
-        )
-
-    def validate_value(self, value):
-
-        if value <= 0:
-
-            raise serializers.ValidationError(
-                "value باید بزرگ‌تر از صفر باشد."
-            )
-
-        return value
-
-
 class BadgeSerializer(serializers.ModelSerializer):
-
-    rule = BadgeRuleSerializer(
-        required=False
-    )
 
     class Meta:
         model = Badge
@@ -743,57 +711,21 @@ class BadgeSerializer(serializers.ModelSerializer):
             "icon",
             "description",
             "is_active",
-            "rule",
+            "required_missions",
         )
 
         read_only_fields = (
             "id",
         )
 
-    def create(self, validated_data):
+    def validate_required_missions(self, value):
 
-        rule_data = validated_data.pop(
-            "rule",
-            None,
-        )
-
-        badge = Badge.objects.create(
-            **validated_data
-        )
-
-        if rule_data:
-
-            BadgeRule.objects.create(
-                badge=badge,
-                **rule_data,
+        if value <= 0:
+            raise serializers.ValidationError(
+                "required_missions باید بزرگ‌تر از صفر باشد."
             )
 
-        return badge
-
-    def update(self, instance, validated_data):
-
-        rule_data = validated_data.pop(
-            "rule",
-            None,
-        )
-
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-
-        instance.save()
-
-        if rule_data is not None:
-
-            rule, created = BadgeRule.objects.get_or_create(
-                badge=instance
-            )
-
-            for attr, value in rule_data.items():
-                setattr(rule, attr, value)
-
-            rule.save()
-
-        return instance
+        return value
 
 
 class UserBadgeSerializer(serializers.ModelSerializer):

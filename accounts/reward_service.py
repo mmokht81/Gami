@@ -5,11 +5,7 @@ from django.db.models import F
 
 from .models import (
     User,
-    Badge,
-    UserBadge,
-    UserMission,
     Level,
-    BadgeRule,
 )
 
 
@@ -17,13 +13,6 @@ from .models import (
 class LevelUpResult:
     from_level: int
     to_level: int
-
-
-@dataclass
-class RewardResult:
-    points: int
-    level_up: LevelUpResult | None = None
-    badges: list = field(default_factory=list)
 
 
 class LevelService:
@@ -165,79 +154,6 @@ class RewardService:
         }
 
 
-class BadgeRewardService:
-
-    @staticmethod
-    def assign_badge(user, badge, reason):
-        """
-        Assign a badge to a user only once.
-
-        Returns:
-            (UserBadge, created)
-        """
-
-        user_badge, created = UserBadge.objects.get_or_create(
-            user=user,
-            badge=badge,
-            defaults={
-                "reason": reason,
-            },
-        )
-
-        return user_badge, created
-
-    @staticmethod
-    def check_automatic_badges(user):
-        """
-        Check active automatic badge rules.
-
-        Currently supported rule:
-            MISSION_COUNT
-
-        Only newly awarded badges are returned.
-        """
-
-        newly_awarded = []
-
-        completed_missions = UserMission.objects.filter(
-            user=user,
-            status="COMPLETED",
-        ).count()
-
-        rules = (
-            BadgeRule.objects
-            .filter(
-                is_active=True,
-                badge__is_active=True,
-            )
-            .select_related("badge")
-        )
-
-        for rule in rules:
-
-            if rule.rule_type != "MISSIONS_COMPLETED":
-                continue
-
-            if completed_missions < rule.value:
-                continue
-
-            user_badge, created = (
-                BadgeRewardService.assign_badge(
-                    user=user,
-                    badge=rule.badge,
-                    reason=(
-                        f"تکمیل حداقل "
-                        f"{rule.value} ماموریت"
-                    ),
-                )
-            )
-
-            if created:
-                newly_awarded.append(user_badge)
-
-        return newly_awarded
-
-
 class RewardResponseBuilder:
 
     @staticmethod
@@ -271,3 +187,4 @@ class RewardResponseBuilder:
                 ],
             },
         }
+

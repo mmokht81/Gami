@@ -9,7 +9,6 @@ from .models import (
     User,
     Badge,
     UserBadge,
-    BadgeRule,
     UserMission,
     Onboarding,
     OnboardingChecklistItem,
@@ -20,6 +19,7 @@ from .models import (
     ChallengeParticipant,
     ChallengeWinner,
 )
+from .reward_service import RewardService
 
 
 class OTPService:
@@ -158,66 +158,64 @@ class OTPService:
         }
 
 
-class PointService:
+class BadgeService:
 
     @staticmethod
-    @transaction.atomic
-    def award_points(user, points):
+    def assign_badge(user, badge, reason=""):
+        """
+        Assign a badge to a user only once.
+        """
 
-        if points <= 0:
-            return user
-
-        user.points = F("points") + points
-
-        user.save(
-            update_fields=[
-                "points"
-            ]
+        user_badge, created = UserBadge.objects.get_or_create(
+            user=user,
+            badge=badge,
+            defaults={
+                "reason": reason,
+            },
         )
 
-        user.refresh_from_db(
-            fields=[
-                "points"
-            ]
-        )
+        return user_badge, created
 
-        return user
-
-
-class BadgeService:
-    
     @staticmethod
     def check_automatic_badges(user):
+        """
+        Check automatic badges based on completed missions.
+
+        A badge is awarded when the user's completed mission
+        count reaches the badge's required_missions threshold.
+        """
+
+        newly_awarded = []
+
+        completed_missions = UserMission.objects.filter(
+            user=user,
+            status="COMPLETED",
+        ).count()
+
         badges = (
             Badge.objects
             .filter(
                 is_active=True,
-                rule__is_active=True,
+                required_missions__isnull=False,
+                required_missions__lte=completed_missions,
             )
-            .select_related("rule")
         )
 
         for badge in badges:
 
-            rule = badge.rule
+            user_badge, created = BadgeService.assign_badge(
+                user=user,
+                badge=badge,
+                reason=(
+                    f"تکمیل حداقل "
+                    f"{badge.required_missions} ماموریت"
+                ),
+            )
 
-            if rule.rule_type == "MISSIONS_COMPLETED":
+            if created:
+                newly_awarded.append(user_badge)
 
-                completed_missions = (
-                    UserMission.objects
-                    .filter(
-                        user=user,
-                        status="COMPLETED",
-                    )
-                    .count()
-                )
-
-                if completed_missions >= rule.value:
-
-                    UserBadge.objects.get_or_create(
-                        user=user,
-                        badge=badge,
-                    )
+        return newly_awarded
 
 
 class OnboardingService:
@@ -502,13 +500,6 @@ class ChallengeService:
                 "زمان ثبت نام به پایان رسیده است."
             )
 
-        now = timezone.now()
-
-        if now >= challenge.start_time:
-            raise ValueError(
-                "زمان ثبت نام به پایان رسیده است."
-            )
-
         participant = (
             ChallengeParticipant.objects
             .filter(
@@ -695,9 +686,9 @@ class ChallengeService:
             )
 
         if winner_points > 0:
-            PointService.award_points(
-                user,
-                winner_points,
+            RewardService.award_points(
+                user=user,
+                points=winner_points,
             )
 
         return winner
