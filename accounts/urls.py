@@ -55,6 +55,7 @@ from .views.job_application import (
 )
 from .views.application_questions import (
     ApplicationQuestionListCreateAPIView,
+    ApplicationQuestionDetailUpdateDeleteAPIView,
     ApplicationQuestionAnswerAPIView,
 )
 from .views.mission_admin import (
@@ -240,6 +241,12 @@ urlpatterns = [
         "api/applications/<int:application_id>/questions/",
         ApplicationQuestionListCreateAPIView.as_view(),
         name="application-custom-questions",
+    ),
+
+    path(
+        "api/application-questions/<int:pk>/",
+        ApplicationQuestionDetailUpdateDeleteAPIView.as_view(),
+        name="application-custom-question-detail",
     ),
 
     path(

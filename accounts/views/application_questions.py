@@ -88,6 +88,81 @@ class ApplicationQuestionListCreateAPIView(
         )
 
 
+class ApplicationQuestionDetailUpdateDeleteAPIView(
+    generics.RetrieveUpdateDestroyAPIView
+):
+    """
+    Custom question management for a specific job application.
+
+    ADMIN / SUPERADMIN:
+        GET    -> view question
+        PUT    -> update question
+        PATCH  -> partially update question
+        DELETE -> delete question
+
+    User:
+        GET    -> view questions belonging to own application
+        PUT/PATCH/DELETE -> forbidden
+    """
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = ApplicationQuestionSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if user.role in ("ADMIN", "SUPERADMIN"):
+            return ApplicationQuestion.objects.select_related(
+                "application",
+                "application__user",
+                "application__job_position",
+            )
+
+        return ApplicationQuestion.objects.filter(
+            application__user=user,
+        ).select_related(
+            "application",
+        )
+
+    def check_admin_permission(self):
+        if self.request.user.role not in (
+            "ADMIN",
+            "SUPERADMIN",
+        ):
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied(
+                "Only HR/Admin users can modify application questions."
+            )
+
+    def put(self, request, *args, **kwargs):
+        self.check_admin_permission()
+
+        return super().put(
+            request,
+            *args,
+            **kwargs,
+        )
+
+    def patch(self, request, *args, **kwargs):
+        self.check_admin_permission()
+
+        return super().patch(
+            request,
+            *args,
+            **kwargs,
+        )
+
+    def delete(self, request, *args, **kwargs):
+        self.check_admin_permission()
+
+        return super().delete(
+            request,
+            *args,
+            **kwargs,
+        )
+
+
 class ApplicationQuestionAnswerAPIView(
     generics.UpdateAPIView
 ):
