@@ -477,16 +477,29 @@ class ChallengeService:
 
         if not challenge.is_active:
             raise ValueError(
-                "این چالش یا مسابقه فعال نیست."
+                "این چالش یا مسابقه غیرفعال است."
             )
 
-        if challenge.status in (
-            "ACTIVE",
-            "FINISHED",
-            "CANCELLED",
-        ):
+        if challenge.status == "FINISHED":
             raise ValueError(
-                "ثبت نام برای این چالش یا مسابقه امکان پذیر نیست."
+                "ثبت نام برای این چالش یا مسابقه به پایان رسیده است."
+            )
+
+        if challenge.status == "CANCELLED":
+            raise ValueError(
+                "این چالش یا مسابقه لغو شده است."
+            )
+
+        if challenge.status == "ACTIVE":
+            raise ValueError(
+                "زمان ثبت نام این چالش یا مسابقه به پایان رسیده است."
+            )
+
+        now = timezone.now()
+
+        if now >= challenge.start_time:
+            raise ValueError(
+                "زمان ثبت نام به پایان رسیده است."
             )
 
         now = timezone.now()
