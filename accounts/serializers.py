@@ -417,10 +417,15 @@ class JobApplicationSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class ApplicationQuestionSerializer(serializers.ModelSerializer):
+# Application Custom Questions
+class ApplicationQuestionSerializer(
+    serializers.ModelSerializer
+):
+
     class Meta:
         model = ApplicationQuestion
-        fields = [
+
+        fields = (
             "id",
             "application",
             "text",
@@ -428,30 +433,47 @@ class ApplicationQuestionSerializer(serializers.ModelSerializer):
             "is_answered",
             "created_at",
             "answered_at",
-        ]
-        read_only_fields = [
+        )
+
+        read_only_fields = (
             "id",
             "application",
             "answer",
             "is_answered",
             "created_at",
             "answered_at",
-        ]
+        )
+
+    def validate_text(self, value):
+
+        value = value.strip()
+
+        if not value:
+            raise serializers.ValidationError(
+                "متن سوال نمی‌تواند خالی باشد."
+            )
+
+        return value
 
 
-class ApplicationQuestionAnswerSerializer(serializers.ModelSerializer):
+class ApplicationQuestionAnswerSerializer(
+    serializers.ModelSerializer
+):
+
     class Meta:
         model = ApplicationQuestion
-        fields = ["answer"]
+
+        fields = (
+            "answer",
+        )
 
     def validate_answer(self, value):
         value = value.strip()
 
         if not value:
             raise serializers.ValidationError(
-                "Answer cannot be empty."
+                "پاسخ نمی‌تواند خالی باشد."
             )
-
         return value
 
 
@@ -513,68 +535,6 @@ class JobApplicationStatusSerializer(serializers.ModelSerializer):
 
             raise serializers.ValidationError(
                 "وضعیت انتخاب‌شده معتبر نیست."
-            )
-
-        return value
-
-
-# Application Custom Questions
-class ApplicationQuestionSerializer(
-    serializers.ModelSerializer
-):
-
-    class Meta:
-        model = ApplicationQuestion
-
-        fields = (
-            "id",
-            "application",
-            "text",
-            "answer",
-            "is_answered",
-            "created_at",
-            "answered_at",
-        )
-
-        read_only_fields = (
-            "id",
-            "application",
-            "answer",
-            "is_answered",
-            "created_at",
-            "answered_at",
-        )
-
-    def validate_text(self, value):
-
-        value = value.strip()
-
-        if not value:
-            raise serializers.ValidationError(
-                "متن سوال نمی‌تواند خالی باشد."
-            )
-
-        return value
-
-
-class ApplicationQuestionAnswerSerializer(
-    serializers.ModelSerializer
-):
-
-    class Meta:
-        model = ApplicationQuestion
-
-        fields = (
-            "answer",
-        )
-
-    def validate_answer(self, value):
-
-        value = value.strip()
-
-        if not value:
-            raise serializers.ValidationError(
-                "پاسخ نمی‌تواند خالی باشد."
             )
 
         return value
