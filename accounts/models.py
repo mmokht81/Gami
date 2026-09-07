@@ -45,6 +45,7 @@ MISSION_STATUS = (
     ("PENDING", "Pending"),
     ("IN_PROGRESS", "In Progress"),
     ("COMPLETED", "Completed"),
+    ("EXPIRED", "Expired"),
 )
 CHALLENGE_TYPE_CHOICES = (
     ("CHALLENGE", "Challenge"),
@@ -427,6 +428,16 @@ class Mission(models.Model):
         default="USER",
     )
 
+    start_time = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    end_time = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
     points = models.PositiveIntegerField(
         default=0,
     )
@@ -455,6 +466,50 @@ class Mission(models.Model):
 
     class Meta:
         ordering = ["name"]
+
+    @property
+    def is_upcoming(self):
+        if self.start_time is None:
+            return False
+
+        return timezone.now() < self.start_time
+
+
+    @property
+    def is_expired(self):
+        if self.end_time is None:
+            return False
+
+        return timezone.now() >= self.end_time
+
+
+    @property
+    def is_time_active(self):
+        now = timezone.now()
+
+        if self.start_time is not None and now < self.start_time:
+            return False
+
+        if self.end_time is not None and now >= self.end_time:
+            return False
+
+        return True
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        super().clean()
+
+        if (
+            self.start_time is not None
+            and self.end_time is not None
+            and self.start_time >= self.end_time
+        ):
+            raise ValidationError({
+                "end_time": (
+                    "تاریخ پایان ماموریت باید بعد از تاریخ شروع باشد."
+                )
+            })
 
     def __str__(self):
         return self.name

@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.utils import timezone
 
 from .models import Mission, UserMission
 
@@ -22,6 +23,9 @@ class AutomaticMissionService:
             return False
 
         if not mission.is_active:
+            return False
+
+        if not mission.is_time_active:
             return False
 
         if mission.job_position_id:
@@ -88,6 +92,22 @@ class AutomaticMissionService:
                 "status": "PENDING",
             },
         )
+
+        if (
+            mission.end_time is not None
+            and timezone.now() >= mission.end_time
+            and user_mission.status != "COMPLETED"
+        ):
+            user_mission.status = "EXPIRED"
+
+            user_mission.save(
+                update_fields=[
+                    "status",
+                    "updated_at",
+                ]
+            )
+
+            return user_mission, False
 
         if user_mission.status == "COMPLETED":
             return user_mission, None

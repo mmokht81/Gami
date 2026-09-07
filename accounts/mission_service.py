@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.utils import timezone
 
 from .models import Mission, UserMission
 from .reward_service import RewardService
@@ -28,12 +29,62 @@ class MissionService:
     """
 
     @staticmethod
+    def _validate_mission_schedule(mission):
+        now = timezone.now()
+
+        if (
+            mission.start_time is not None
+            and now < mission.start_time
+        ):
+            raise ValidationError(
+                "زمان شروع این ماموریت هنوز نرسیده است."
+            )
+
+        if (
+            mission.end_time is not None
+            and now >= mission.end_time
+        ):
+            raise ValidationError(
+                "ددلاین این ماموریت به پایان رسیده است."
+            )
+
+    @staticmethod
+    def _expire_user_mission_if_needed(user_mission):
+        mission = user_mission.mission
+
+        if (
+            mission.end_time is not None
+            and timezone.now() >= mission.end_time
+            and user_mission.status != "COMPLETED"
+        ):
+            user_mission.status = "EXPIRED"
+
+            user_mission.save(
+                update_fields=[
+                    "status",
+                    "updated_at",
+                ]
+            )
+
+            return True
+
+        return False
+
+    @staticmethod
     @transaction.atomic
     def assign_mission(user, mission):
 
         if not mission.is_active:
             raise ValidationError(
                 "این ماموریت فعال نیست."
+            )
+
+        if (
+            mission.end_time is not None
+            and timezone.now() >= mission.end_time
+        ):
+            raise ValidationError(
+                "ددلاین این ماموریت به پایان رسیده است."
             )
 
         if not user.is_active:
@@ -76,6 +127,17 @@ class MissionService:
             raise ValidationError(
                 "این ماموریت به شما اختصاص داده نشده است."
             )
+
+        if MissionService._expire_user_mission_if_needed(
+            user_mission
+        ):
+            raise ValidationError(
+                "ددلاین این ماموریت به پایان رسیده است."
+            )
+
+        MissionService._validate_mission_schedule(
+            mission
+        )
 
         if user_mission.status == "COMPLETED":
             return user_mission, False
@@ -120,6 +182,17 @@ class MissionService:
                 "این ماموریت به شما اختصاص داده نشده است."
             )
 
+        if MissionService._expire_user_mission_if_needed(
+            user_mission
+        ):
+            raise ValidationError(
+                "ددلاین این ماموریت به پایان رسیده است."
+            )
+
+        MissionService._validate_mission_schedule(
+            mission
+        )
+
         # A completed mission is immutable.
         # No progress update and no reward processing.
         if user_mission.status == "COMPLETED":
@@ -154,7 +227,6 @@ class MissionService:
         return user_mission, reward
 
     @staticmethod
-    @transaction.atomic
     def complete_mission(user, mission):
 
         if not mission.is_active:
@@ -181,18 +253,44 @@ class MissionService:
             )
 
         # --------------------------------------------------
+        # Expire mission after deadline
+        # --------------------------------------------------
+        #
+        # This must be committed before raising ValidationError.
+        # Otherwise an outer atomic transaction would roll back
+        # the EXPIRED status.
+        # --------------------------------------------------
+
+        if (
+            mission.end_time is not None
+            and timezone.now() >= mission.end_time
+            and user_mission.status != "COMPLETED"
+        ):
+            user_mission.status = "EXPIRED"
+
+            user_mission.save(
+                update_fields=[
+                    "status",
+                    "updated_at",
+                ]
+            )
+
+            raise ValidationError(
+                "ددلاین این ماموریت به پایان رسیده است."
+            )
+
+        MissionService._validate_mission_schedule(
+            mission
+        )
+
+        # --------------------------------------------------
         # Idempotency guard
         # --------------------------------------------------
         #
-        # Because the row is locked with select_for_update(),
-        # concurrent completion requests cannot both process
-        # the reward.
+        # select_for_update() prevents concurrent completion
+        # requests from processing the reward twice.
         #
-        # The first request completes the mission and awards
-        # the reward.
-        #
-        # Any later request sees COMPLETED and returns without
-        # awarding points, levels or badges again.
+        # A completed mission remains immutable.
         # --------------------------------------------------
 
         if user_mission.status == "COMPLETED":
@@ -203,20 +301,22 @@ class MissionService:
                 "ابتدا باید ماموریت را شروع کنید."
             )
 
-        user_mission.progress = 100
-        user_mission.status = "COMPLETED"
+        with transaction.atomic():
 
-        user_mission.save(
-            update_fields=[
-                "progress",
-                "status",
-                "updated_at",
-            ]
-        )
+            user_mission.progress = 100
+            user_mission.status = "COMPLETED"
 
-        reward = MissionService._handle_completion(
-            user_mission
-        )
+            user_mission.save(
+                update_fields=[
+                    "progress",
+                    "status",
+                    "updated_at",
+                ]
+            )
+
+            reward = MissionService._handle_completion(
+                user_mission
+            )
 
         return user_mission, reward
 

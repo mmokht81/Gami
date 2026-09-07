@@ -48,8 +48,12 @@ class UserAdmin(admin.ModelAdmin):
 
 @admin.register(Mission)
 class MissionAdmin(admin.ModelAdmin):
+
     list_display = (
         "name",
+        "type",
+        "start_time",
+        "end_time",
         "points",
         "is_active",
     )
@@ -59,9 +63,14 @@ class MissionAdmin(admin.ModelAdmin):
     )
 
     list_filter = (
+        "type",
         "is_active",
     )
 
+    ordering = (
+        "start_time",
+        "name",
+    )
 
 @admin.register(UserMission)
 class UserMissionAdmin(admin.ModelAdmin):

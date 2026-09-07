@@ -107,9 +107,48 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
 
 # Mission
 class MissionSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Mission
         fields = "__all__"
+
+    def validate(self, attrs):
+
+        start_time = attrs.get(
+            "start_time",
+            getattr(self.instance, "start_time", None),
+        )
+
+        end_time = attrs.get(
+            "end_time",
+            getattr(self.instance, "end_time", None),
+        )
+
+        errors = {}
+
+        if start_time is None:
+            errors["start_time"] = (
+                "تاریخ شروع ماموریت الزامی است."
+            )
+
+        if end_time is None:
+            errors["end_time"] = (
+                "ددلاین ماموریت الزامی است."
+            )
+
+        if (
+            start_time is not None
+            and end_time is not None
+            and start_time >= end_time
+        ):
+            errors["end_time"] = (
+                "ددلاین باید بعد از تاریخ شروع باشد."
+            )
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        return attrs
 
 
 class UserMissionSerializer(serializers.ModelSerializer):
