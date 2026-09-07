@@ -469,10 +469,11 @@ class MissionTimingAPITests(APITestCase):
             user_mission.status,
             "EXPIRED",
         )
-    def test_admin_must_provide_mission_schedule(self):
+
+    def test_admin_can_create_mission_without_schedule(self):
 
         admin = User.objects.create_user(
-            phone_number="09123333333",
+            phone_number="09125555555",
             password="testpassword123",
             role="ADMIN",
         )
@@ -491,9 +492,9 @@ class MissionTimingAPITests(APITestCase):
             "/api/mission-management/",
             {
                 "name": "Mission Without Schedule",
-                "description": "Invalid mission",
-                "type": "HR",
-                "points": 100,
+                "description": "No time restriction",
+                "type": "USER",
+                "points": 50,
                 "is_active": True,
             },
             format="json",
@@ -501,17 +502,19 @@ class MissionTimingAPITests(APITestCase):
 
         self.assertEqual(
             response.status_code,
-            400,
+            201,
         )
 
-        self.assertIn(
-            "start_time",
-            response.data,
+        mission = Mission.objects.get(
+            name="Mission Without Schedule"
         )
 
-        self.assertIn(
-            "end_time",
-            response.data,
+        self.assertIsNone(
+            mission.start_time
+        )
+
+        self.assertIsNone(
+            mission.end_time
         )
 
     def test_admin_can_create_scheduled_mission(self):

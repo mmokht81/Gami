@@ -126,15 +126,15 @@ class MissionSerializer(serializers.ModelSerializer):
 
         errors = {}
 
-        if start_time is None:
-            errors["start_time"] = (
-                "تاریخ شروع ماموریت الزامی است."
-            )
+        # if start_time is None:
+        #     errors["start_time"] = (
+        #         "تاریخ شروع ماموریت الزامی است."
+        #     )
 
-        if end_time is None:
-            errors["end_time"] = (
-                "ددلاین ماموریت الزامی است."
-            )
+        # if end_time is None:
+        #     errors["end_time"] = (
+        #         "ددلاین ماموریت الزامی است."
+        #     )
 
         if (
             start_time is not None
