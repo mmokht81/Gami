@@ -1,18 +1,18 @@
 from django.core.exceptions import ValidationError
 
 from rest_framework import generics
-# from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
 from drf_spectacular.utils import extend_schema
 
 from ..permissions import IsAdminOrSuperAdmin
-from ..models import Mission
+from ..models import Mission, UserMission
 from ..mission_service import MissionService
 from ..serializers import (
     AssignMissionSerializer,
     UserMissionSerializer,
+    HRMissionAssignmentSerializer,
 )
 
 
@@ -93,4 +93,46 @@ class MissionAssignAPIView(generics.CreateAPIView):
                 else status.HTTP_200_OK
             ),
         )
+
+class HRMissionAssignmentListAPIView(generics.ListAPIView):
+    """
+    API for listing HR-assigned missions.
+
+    Only ADMIN and SUPERADMIN users can access this endpoint.
+    """
+
+    serializer_class = HRMissionAssignmentSerializer
+    permission_classes = [IsAdminOrSuperAdmin]
+
+    @extend_schema(
+        summary="List HR mission assignments",
+        description="""
+        Returns all missions assigned by HR to users.
+
+        Only HR/Admin users can access this endpoint.
+
+        Includes:
+        - User information
+        - Mission information
+        - Progress
+        - Mission status
+        - Creation and update dates
+        """,
+        responses=UserMissionSerializer(many=True),
+    )
+    def get_queryset(self):
+        return (
+            UserMission.objects
+            .filter(
+                mission__type="HR",
+            )
+            .select_related(
+                "user",
+                "mission",
+            )
+            .order_by(
+                "-created_at"
+            )
+        )
+
 

@@ -170,6 +170,32 @@ class UserMissionSerializer(serializers.ModelSerializer):
         )
 
 
+class HRMissionAssignmentSerializer(serializers.ModelSerializer):
+
+    user = UserSerializer(
+        read_only=True
+    )
+
+    mission = MissionSerializer(
+        read_only=True
+    )
+
+    class Meta:
+        model = UserMission
+
+        fields = (
+            "id",
+            "user",
+            "mission",
+            "progress",
+            "status",
+            "created_at",
+            "updated_at",
+        )
+
+        read_only_fields = fields
+
+
 class AssignMissionSerializer(serializers.Serializer):
 
     user_id = serializers.IntegerField()
