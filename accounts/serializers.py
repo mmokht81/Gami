@@ -170,7 +170,7 @@ class UserMissionSerializer(serializers.ModelSerializer):
         )
 
 
-class HRMissionAssignmentSerializer(serializers.ModelSerializer):
+class MissionAssignmentSerializer(serializers.ModelSerializer):
 
     user = UserSerializer(
         read_only=True

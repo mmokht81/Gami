@@ -12,7 +12,7 @@ from ..mission_service import MissionService
 from ..serializers import (
     AssignMissionSerializer,
     UserMissionSerializer,
-    HRMissionAssignmentSerializer,
+    MissionAssignmentSerializer,
 )
 
 
@@ -94,14 +94,14 @@ class MissionAssignAPIView(generics.CreateAPIView):
             ),
         )
 
-class HRMissionAssignmentListAPIView(generics.ListAPIView):
+class MissionAssignmentListAPIView(generics.ListAPIView):
     """
     API for listing HR-assigned missions.
 
     Only ADMIN and SUPERADMIN users can access this endpoint.
     """
 
-    serializer_class = HRMissionAssignmentSerializer
+    serializer_class = MissionAssignmentSerializer
     permission_classes = [IsAdminOrSuperAdmin]
 
     @extend_schema(
@@ -123,9 +123,6 @@ class HRMissionAssignmentListAPIView(generics.ListAPIView):
     def get_queryset(self):
         return (
             UserMission.objects
-            .filter(
-                mission__type="HR",
-            )
             .select_related(
                 "user",
                 "mission",
