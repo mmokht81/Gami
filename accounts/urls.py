@@ -61,6 +61,7 @@ from .views.application_questions import (
 from .views.mission_admin import (
     MissionAssignAPIView,
     MissionAssignmentListAPIView,
+    MissionAssignmentProgressAPIView,
 )
 from .views.job_position_admin import (
     JobPositionCreateAPIView,
@@ -194,6 +195,12 @@ urlpatterns = [
         "api/mission-management/assignments/",
         MissionAssignmentListAPIView.as_view(),
         name="api_hr_mission_assignments",
+    ),
+
+    path(
+        "api/mission-management/assignments/<int:pk>/",
+        MissionAssignmentProgressAPIView.as_view(),
+        name="api_hr_mission_assignment_progress",
     ),
 
     path(

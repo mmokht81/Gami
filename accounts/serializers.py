@@ -196,6 +196,33 @@ class MissionAssignmentSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class MissionAssignmentProgressSerializer(
+    serializers.ModelSerializer
+):
+
+    class Meta:
+        model = UserMission
+
+        fields = (
+            "progress",
+        )
+
+        extra_kwargs = {
+            "progress": {
+                "required": True,
+            }
+        }
+
+    def validate_progress(self, value):
+
+        if not 0 <= value <= 100:
+            raise serializers.ValidationError(
+                "درصد پیشرفت باید بین 0 تا 100 باشد."
+            )
+
+        return value
+
+
 class AssignMissionSerializer(serializers.Serializer):
 
     user_id = serializers.IntegerField()
