@@ -53,14 +53,14 @@ class PhoneAPIView(generics.GenericAPIView):
         if User.objects.filter(phone_number=phone).exists():
             return Response(
                 {
-                    "message": "User exists. Please login."
+                    "message": "این کاربر قبلاً ثبت‌نام کرده است. لطفاً وارد شوید."
                 },
                 status=status.HTTP_200_OK,
             )
 
         return Response(
             {
-                "message": "New user. Please register."
+                "message": "کاربر جدید است. لطفاً ثبت‌نام کنید."
             },
             status=status.HTTP_200_OK,
         )
@@ -99,7 +99,7 @@ class RegisterAPIView(generics.CreateAPIView):
         if User.objects.filter(phone_number=phone).exists():
             return Response(
                 {
-                    "error": "User already exists"
+                    "error": "این کاربر قبلاً ثبت‌نام کرده است."
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -114,7 +114,7 @@ class RegisterAPIView(generics.CreateAPIView):
 
         return Response(
             {
-                "message": "User created. OTP sent.",
+                "message": "کاربر ثبت نام شد، کد تایید برای شما ارسال شد.",
                 "phone_number": phone,
             },
             status=status.HTTP_201_CREATED,
@@ -169,7 +169,7 @@ class VerifyOTPAPIView(generics.GenericAPIView):
 
         return Response(
             {
-                "message": "OTP verified successfully",
+                "message": "کد تایید با موفقیت وارد شد.",
 
                 "access": str(refresh.access_token),
 
@@ -209,7 +209,7 @@ class ForgotPasswordAPIView(generics.GenericAPIView):
         if not User.objects.filter(phone_number=phone).exists():
             return Response(
                 {
-                    "error": "User not found"
+                    "error": "کاربر مورد نظر پیدا نشد."
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
@@ -222,7 +222,7 @@ class ForgotPasswordAPIView(generics.GenericAPIView):
 
         return Response(
             {
-                "message": "OTP sent for password reset"
+                "message": "کد تأیید برای بازیابی رمز عبور ارسال شد."
             },
             status=status.HTTP_200_OK,
         )
@@ -258,7 +258,7 @@ class ResetPasswordAPIView(generics.GenericAPIView):
         except User.DoesNotExist:
             return Response(
                 {
-                    "error": "User not found"
+                    "error": "کاربر مورد نظر پیدا نشد."
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
@@ -268,7 +268,7 @@ class ResetPasswordAPIView(generics.GenericAPIView):
 
         return Response(
             {
-                "message": "Password changed successfully"
+                "message": "رمز عبور با موفقیت تغییر کرد."
             },
             status=status.HTTP_200_OK,
         )
