@@ -273,16 +273,18 @@ class OnboardingService:
     def ensure_for_level_one_user(user):
 
         """
-        Create onboarding automatically when:
+        Ensure that an eligible user has an onboarding.
 
-        1. User is Level 1
-        2. User has an accepted job application
+        Eligibility:
+        - User must be Level 1 or higher.
+        - User must have an accepted job application.
 
-        OneToOneField guarantees that only one
-        onboarding can exist for the user.
+        If onboarding already exists, it is reused and its
+        checklist progress is synchronized with the user's
+        current job position.
         """
 
-        if user.level != 1:
+        if user.level < 1:
             return None
 
         application = (

@@ -8,6 +8,7 @@ from .models import (
     JobApplication,
     Onboarding,
     OnboardingChecklistItem,
+    OnboardingChecklistProgress,
     Team,
 )
 from .services import OnboardingService
@@ -33,6 +34,8 @@ class OnboardingAPITests(TestCase):
         self.user = User.objects.create_user(
             phone_number="09122222222",
             password="testpass123",
+            status="استخدام شده",
+            is_active=True,
         )
 
         self.admin = User.objects.create_user(
@@ -478,3 +481,47 @@ class OnboardingAPITests(TestCase):
             onboarding.team_id,
             self.team.id,
         )
+
+    def test_level_2_user_gets_new_checklist_item(self):
+        user = User.objects.create_user(
+            phone_number="09123334444",
+            password="testpass123",
+            status="استخدام شده",
+            is_active=True,
+        )
+
+        user.level = 2
+        user.save(update_fields=["level"])
+
+        JobApplication.objects.create(
+            user=user,
+            job_position=self.job_position,
+            status="ACCEPTED",
+        )
+
+        # Create onboarding before checklist item exists
+        onboarding = OnboardingService.ensure_for_level_one_user(user)
+
+        self.assertIsNotNone(onboarding)
+
+        # Create a new active checklist item
+        checklist_item = OnboardingChecklistItem.objects.create(
+            job_position=self.job_position,
+            title="تکمیل مدارک",
+            type="DOCUMENT",
+            points=50,
+            order=1,
+            is_active=True,
+        )
+
+        # Sync existing onboarding
+        onboarding = OnboardingService.ensure_for_level_one_user(user)
+
+        # New checklist item must be added to onboarding
+        progress = OnboardingChecklistProgress.objects.filter(
+            onboarding=onboarding,
+            checklist_item=checklist_item,
+        ).first()
+
+        self.assertIsNotNone(progress)
+        self.assertFalse(progress.is_completed)

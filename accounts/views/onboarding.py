@@ -157,29 +157,25 @@ class OnboardingTeamAssignAPIView(
 
             return Response(
                 {
-                    "detail": "کاربر پیدا نشد."
+                    "detail": "کاربر پیدا نشد یا غیرفعال است."
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Automatically create onboarding
-        # for eligible Level 1 users.
-        onboarding = (
-            OnboardingService
-            .ensure_for_level_one_user(user)
-        )
-
-        if onboarding is None:
+        # User must be employed and Level >= 1
+        if (
+            user.status != "استخدام شده"
+            or user.level < 1
+        ):
 
             return Response(
                 {
                     "detail": (
-                        "برای این کاربر Onboarding قابل ایجاد نیست. "
-                        "کاربر باید Level 1 باشد و یک درخواست استخدام "
-                        "پذیرفته‌شده داشته باشد."
+                        "کاربر باید استخدام شده باشد "
+                        "و Level او حداقل 1 باشد."
                     )
                 },
-                status=status.HTTP_404_NOT_FOUND,
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
@@ -196,6 +192,48 @@ class OnboardingTeamAssignAPIView(
                     "detail": "Team پیدا نشد."
                 },
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Get existing onboarding or create it
+        onboarding = (
+            Onboarding.objects
+            .filter(
+                user=user
+            )
+            .first()
+        )
+
+        if onboarding is None:
+
+            application = (
+                user.applications
+                .filter(
+                    status="ACCEPTED"
+                )
+                .select_related(
+                    "job_position"
+                )
+                .order_by("-updated_at")
+                .first()
+            )
+
+            if application is None:
+
+                return Response(
+                    {
+                        "detail": (
+                            "برای این کاربر درخواست استخدام "
+                            "پذیرفته‌شده وجود ندارد."
+                        )
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            onboarding = (
+                OnboardingService.create_for_user(
+                    user=user,
+                    job_position=application.job_position,
+                )
             )
 
         OnboardingService.assign_team(
