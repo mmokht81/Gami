@@ -1,10 +1,12 @@
-from rest_framework import generics
+from rest_framework import generics, status
+from rest_framework.response import Response
 
 from ..models import OnboardingChecklistItem
 from ..permissions import IsAdminOrSuperAdmin
 from ..serializers import (
     OnboardingChecklistItemManagementSerializer,
 )
+from ..services import OnboardingService
 
 
 class OnboardingChecklistListCreateAPIView(
@@ -45,6 +47,31 @@ class OnboardingChecklistListCreateAPIView(
 
         return queryset
 
+    def create(self, request, *args, **kwargs):
+
+        serializer = self.get_serializer(
+            data=request.data
+        )
+
+        serializer.is_valid(
+            raise_exception=True
+        )
+
+        checklist_item = serializer.save()
+
+        OnboardingService.sync_checklist_item(
+            checklist_item
+        )
+
+        headers = self.get_success_headers(
+            serializer.data
+        )
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_201_CREATED,
+            headers=headers,
+        )
 
 class OnboardingChecklistDetailUpdateDeleteAPIView(
     generics.RetrieveUpdateDestroyAPIView

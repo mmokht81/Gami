@@ -435,6 +435,23 @@ class OnboardingService:
 
         return onboarding.progress >= 100
 
+    @staticmethod
+    @transaction.atomic
+    def sync_checklist_item(checklist_item):
+        onboardings = Onboarding.objects.filter(
+            job_position=checklist_item.job_position,
+        )
+
+        for onboarding in onboardings:
+            OnboardingChecklistProgress.objects.get_or_create(
+                onboarding=onboarding,
+                checklist_item=checklist_item,
+            )
+
+            OnboardingService.update_checklist_progress(
+                onboarding
+            )
+
 
 class ChallengeService:
 

@@ -368,3 +368,58 @@ class OnboardingChecklistSyncTest(TestCase):
             onboarding.checklist_progress,
             0,
         )
+
+class OnboardingChecklistCreateSyncTest(TestCase):
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            phone_number="09120000000",
+            password="test1234",
+            level=1,
+        )
+
+        self.job_position = JobPosition.objects.create(
+            title="Test Position",
+            description="Test",
+            is_active=True,
+        )
+
+        JobApplication.objects.create(
+            user=self.user,
+            job_position=self.job_position,
+            status="ACCEPTED",
+        )
+
+        self.onboarding = OnboardingService.ensure_for_level_one_user(
+            self.user
+        )
+
+    def test_new_checklist_is_synced_to_existing_onboarding(self):
+
+        checklist_item = OnboardingChecklistItem.objects.create(
+            job_position=self.job_position,
+            title="تست چک‌لیست",
+            type="TASK",
+            points=10,
+            order=1,
+            is_active=True,
+        )
+
+        OnboardingService.sync_checklist_item(
+            checklist_item
+        )
+
+        progress = OnboardingChecklistProgress.objects.filter(
+            onboarding=self.onboarding,
+            checklist_item=checklist_item,
+        ).first()
+
+        self.assertIsNotNone(progress)
+        self.assertFalse(progress.is_completed)
+
+        self.onboarding.refresh_from_db()
+
+        self.assertEqual(
+            self.onboarding.checklist_progress,
+            0,
+        )
