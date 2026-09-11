@@ -285,3 +285,86 @@ class OnboardingServiceTests(TestCase):
                 onboarding
             )
         )
+
+
+from django.test import TestCase
+from .models import (
+    User,
+    JobPosition,
+    JobApplication,
+    OnboardingChecklistItem,
+    OnboardingChecklistProgress,
+    Onboarding,
+)
+from .services import OnboardingService
+
+class OnboardingChecklistSyncTest(TestCase):
+
+    def test_checklist_is_synced_to_existing_onboarding(self):
+        # 1. Create Level 1 user
+        user = User.objects.create_user(
+            phone_number="09110000001",
+            password="TestPass123",
+        )
+
+        user.level = 1
+        user.status = "استخدام شده"
+        user.save()
+
+        # 2. Create job position
+        job_position = JobPosition.objects.create(
+            title="کارشناس تست نرم افزار",
+            description="تست فرانت و بک",
+            is_active=True,
+        )
+
+        # 3. Create accepted job application
+        JobApplication.objects.create(
+            user=user,
+            job_position=job_position,
+            status="ACCEPTED",
+        )
+
+        # 4. Create onboarding
+        onboarding = OnboardingService.ensure_for_level_one_user(
+            user
+        )
+
+        self.assertIsNotNone(onboarding)
+        self.assertEqual(
+            onboarding.job_position_id,
+            job_position.id,
+        )
+
+        # 5. Create checklist AFTER onboarding
+        checklist = OnboardingChecklistItem.objects.create(
+            job_position=job_position,
+            title="تکمیل فرم شروع به کار",
+            type="TASK",
+            description="فرم شروع به کار تکمیل شود.",
+            order=1,
+            is_active=True,
+            points=10,
+        )
+
+        # 6. Call onboarding service again
+        onboarding = OnboardingService.ensure_for_level_one_user(
+            user
+        )
+
+        # 7. Checklist progress must be created
+        progress = OnboardingChecklistProgress.objects.filter(
+            onboarding=onboarding,
+            checklist_item=checklist,
+        ).first()
+
+        self.assertIsNotNone(progress)
+        self.assertFalse(progress.is_completed)
+
+        # 8. Checklist progress should still be 0
+        onboarding.refresh_from_db()
+
+        self.assertEqual(
+            onboarding.checklist_progress,
+            0,
+        )

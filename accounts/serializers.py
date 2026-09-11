@@ -1155,6 +1155,21 @@ class OnboardingChecklistItemManagementSerializer(
 
         return value
 
+    # def create(self, validated_data):
+    #     checklist_item = super().create(validated_data)
+
+    #     onboardings = Onboarding.objects.filter(
+    #         job_position=checklist_item.job_position,
+    #     )
+
+    #     for onboarding in onboardings:
+    #         OnboardingChecklistProgress.objects.get_or_create(
+    #             onboarding=onboarding,
+    #             checklist_item=checklist_item,
+    #         )
+
+    #     return checklist_item
+
 
 class OnboardingChecklistCompleteSerializer(
     serializers.Serializer
