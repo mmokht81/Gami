@@ -856,6 +856,20 @@ class AssignBadgeSerializer(serializers.Serializer):
 # Team
 class TeamSerializer(serializers.ModelSerializer):
 
+    manager = UserSerializer(
+        read_only=True
+    )
+
+    manager_id = serializers.PrimaryKeyRelatedField(
+        source="manager",
+        queryset=User.objects.filter(
+            role="ADMIN",
+            is_active=True,
+        ),
+        write_only=True,
+        required=True,
+    )
+
     members = serializers.SerializerMethodField()
 
     class Meta:
@@ -865,6 +879,8 @@ class TeamSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "description",
+            "manager",
+            "manager_id",
             "members",
             "is_active",
             "created_at",
@@ -873,6 +889,7 @@ class TeamSerializer(serializers.ModelSerializer):
 
         read_only_fields = (
             "id",
+            "manager",
             "members",
             "created_at",
             "updated_at",
@@ -881,20 +898,62 @@ class TeamSerializer(serializers.ModelSerializer):
     def get_members(self, obj):
 
         onboardings = (
-            obj.onboardings
-            .select_related("user")
+            Onboarding.objects
             .filter(
+                team=obj,
                 user__is_active=True,
+            )
+            .select_related("user")
+            .order_by(
+                "user__first_name",
+                "user__last_name",
+                "user__id",
             )
         )
 
-        return UserSerializer(
-            [
+        return [
+            UserSerializer(
                 onboarding.user
-                for onboarding in onboardings
-            ],
-            many=True,
-        ).data
+            ).data
+            for onboarding in onboardings
+        ]
+
+    def validate(self, attrs):
+
+        manager = attrs.get(
+            "manager",
+            getattr(
+                self.instance,
+                "manager",
+                None,
+            ),
+        )
+
+        if manager is None:
+
+            raise serializers.ValidationError({
+                "manager_id": (
+                    "مدیر تیم الزامی است."
+                )
+            })
+
+        if not manager.is_active:
+
+            raise serializers.ValidationError({
+                "manager_id": (
+                    "مدیر تیم باید یک کاربر فعال باشد."
+                )
+            })
+
+        if manager.role != "ADMIN":
+
+            raise serializers.ValidationError({
+                "manager_id": (
+                    "مدیر تیم باید دارای نقش ADMIN باشد."
+                )
+            })
+
+        return attrs
 
 
 # Onboarding

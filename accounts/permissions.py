@@ -10,6 +10,39 @@ class IsAdminOrSuperAdmin(BasePermission):
             and request.user.role in ("ADMIN", "SUPERADMIN")
         )
 
+class IsTeamManagerOrSuperAdmin(BasePermission):
+    message = (
+        "Only the team manager or SUPERADMIN can access this team."
+    )
+
+    def has_permission(self, request, view):
+
+        if (
+            not request.user
+            or not request.user.is_authenticated
+        ):
+            return False
+
+        if request.user.role == "SUPERADMIN":
+            return True
+
+        return request.user.role == "ADMIN"
+
+    def has_object_permission(
+        self,
+        request,
+        view,
+        obj,
+    ):
+
+        if request.user.role == "SUPERADMIN":
+            return True
+
+        return (
+            request.user.role == "ADMIN"
+            and obj.manager_id == request.user.id
+        )
+
 class IsAuthenticatedOrAdminForWrite(BasePermission):
     message = "Only ADMIN or SUPERADMIN users can modify job positions."
 
